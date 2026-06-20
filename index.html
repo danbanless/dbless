@@ -95,15 +95,19 @@
       color: var(--black);
       margin-bottom: 48px;
     }
-    .home-pain-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    .home-pain-slider { overflow: hidden; }
+    .home-pain-track {
+      display: flex;
       gap: 16px;
+      transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
     }
     .home-pain-item {
       background: #FFFFFF;
       border-radius: 12px;
       padding: 28px 24px;
+      flex: 0 0 calc((100% - 32px) / 3);
+      min-width: 0;
     }
     .home-pain-num {
       font-family: 'JetBrains Mono', monospace;
@@ -115,6 +119,24 @@
     }
     .home-pain-text { font-size: 20px; color: var(--gray-700); line-height: 1.7; }
     .home-pain-text strong { color: var(--black); font-weight: 600; }
+    .home-pain-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 28px;
+    }
+    .home-pain-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #CCCCCC;
+      transition: background 0.3s, width 0.3s;
+      cursor: pointer;
+    }
+    .home-pain-dot.on {
+      background: var(--indigo);
+      width: 20px;
+      border-radius: 3px;
+    }
 
     /* TOOLS */
     .home-tools {
@@ -305,23 +327,38 @@
   </section>
 
   <!-- PAIN -->
-  <section class="home-pain">
+  <section class="home-pain" id="painSection">
     <p class="home-section-tag">이런 상황 있으셨나요</p>
     <h2>매번 하는 그 작업,<br>사실 도구가 해야 할 일입니다</h2>
-    <div class="home-pain-grid">
-      <div class="home-pain-item">
-        <p class="home-pain-num">01</p>
-        <p class="home-pain-text">공문 10개를<br><strong>하나씩 워드에서</strong><br>만들고 있다</p>
-      </div>
-      <div class="home-pain-item">
-        <p class="home-pain-num">02</p>
-        <p class="home-pain-text">메일 200통을<br><strong>이름만 바꿔가며</strong><br>보내고 있다</p>
-      </div>
-      <div class="home-pain-item">
-        <p class="home-pain-num">03</p>
-        <p class="home-pain-text">PDF 합치려고<br><strong>유료 사이트에</strong><br>업로드하고 있다</p>
+    <div class="home-pain-slider">
+      <div class="home-pain-track" id="painTrack">
+        <div class="home-pain-item">
+          <p class="home-pain-num">01</p>
+          <p class="home-pain-text">공문 10개를<br><strong>하나씩 워드에서</strong><br>만들고 있다</p>
+        </div>
+        <div class="home-pain-item">
+          <p class="home-pain-num">02</p>
+          <p class="home-pain-text">메일 200통을<br><strong>이름만 바꿔가며</strong><br>보내고 있다</p>
+        </div>
+        <div class="home-pain-item">
+          <p class="home-pain-num">03</p>
+          <p class="home-pain-text">PDF 합치려고<br><strong>유료 사이트에</strong><br>업로드하고 있다</p>
+        </div>
+        <div class="home-pain-item">
+          <p class="home-pain-num">04</p>
+          <p class="home-pain-text">배경 지우려고<br><strong>누끼따기 사이트를</strong><br>검색하고 있다</p>
+        </div>
+        <div class="home-pain-item">
+          <p class="home-pain-num">05</p>
+          <p class="home-pain-text">타이머 넣으려고<br><strong>'ppt 타이머'를</strong><br>찾고 있다</p>
+        </div>
+        <div class="home-pain-item">
+          <p class="home-pain-num">06</p>
+          <p class="home-pain-text">명찰 50장을<br><strong>하나씩 워드에서</strong><br>만들고 있다</p>
+        </div>
       </div>
     </div>
+    <div class="home-pain-dots" id="painDots"></div>
   </section>
 
   <!-- TOOLS -->
@@ -435,5 +472,65 @@
     <span class="home-footer-r">D단순 B반복 Less없는 회사생활</span>
   </footer>
 
+<script>
+(function() {
+  const track  = document.getElementById('painTrack');
+  const dotsWrap = document.getElementById('painDots');
+  const section  = document.getElementById('painSection');
+  const TOTAL = 6, INTERVAL = 3500;
+  let cur = 0, paused = false;
+
+  // 앞 3개 클론 → 끝에 붙여 무한루프
+  const origItems = Array.from(track.children);
+  origItems.slice(0, 3).forEach(el => track.appendChild(el.cloneNode(true)));
+
+  // 도트 (원본 6개 기준)
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'home-pain-dot' + (i === 0 ? ' on' : '');
+    d.addEventListener('click', () => jump(i));
+    dotsWrap.appendChild(d);
+  }
+
+  function cardW() {
+    return track.children[0].offsetWidth + 16;
+  }
+
+  function setDot(idx) {
+    dotsWrap.querySelectorAll('.home-pain-dot').forEach((d, i) =>
+      d.classList.toggle('on', i === idx % TOTAL));
+  }
+
+  function moveTo(idx, animate) {
+    track.style.transition = animate
+      ? 'transform 0.45s cubic-bezier(0.4,0,0.2,1)' : 'none';
+    track.style.transform = `translateX(-${idx * cardW()}px)`;
+    setDot(idx);
+  }
+
+  function jump(idx) {
+    cur = idx;
+    moveTo(cur, true);
+  }
+
+  function next() {
+    if (paused) return;
+    cur++;
+    moveTo(cur, true);
+    // 클론 구간(6,7,8) 표시 후 → 조용히 원본으로 복귀
+    if (cur >= TOTAL) {
+      setTimeout(() => {
+        cur = cur - TOTAL;
+        moveTo(cur, false);
+      }, 460);
+    }
+  }
+
+  section.addEventListener('mouseenter', () => { paused = true; });
+  section.addEventListener('mouseleave', () => { paused = false; });
+
+  setInterval(next, INTERVAL);
+})();
+</script>
 </body>
 </html>
