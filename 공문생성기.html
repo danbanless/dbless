@@ -907,8 +907,8 @@ const TMPLS = {
   }
 };
 
-// TT_COLS: 시간 외 컬럼명 목록
-let TT_COLS = ['주요 활동'];
+// TT_COLS: 시간 외 컬럼 [{name, align}]
+let TT_COLS = [{name:'주요 활동', align:'left'}];
 // TT_ROWS: [{time, cols:[...]}]
 let TT_ROWS = [
   {time:'09:00', cols:['']},
@@ -928,20 +928,32 @@ function saveTTRows(){
     TT_ROWS.push({ time: row.querySelector('.tt-time').value.trim(), cols: vals });
   });
 }
+const TT_ALIGNS = ['left','center','right'];
+const TT_ALIGN_LABELS = {left:'좌',center:'중',right:'우'};
 function renderTTColConfig(){
   const wrap = document.getElementById('ttColWrap');
   if(!wrap) return;
   wrap.innerHTML = TT_COLS.map((col,i)=>`
-    <div style="display:flex;align-items:center;gap:3px;">
-      <input class="bi" style="width:88px;font-size:12px;padding:3px 6px;" value="${col.replace(/"/g,'&quot;')}"
-        oninput="TT_COLS[${i}]=this.value;if(S.roster.length)previewDoc();">
+    <div style="display:flex;align-items:center;gap:3px;background:#fff;border:1px solid var(--bdr);border-radius:5px;padding:3px 5px;">
+      <input class="bi" style="width:80px;font-size:12px;padding:2px 5px;border-radius:4px;" value="${col.name.replace(/"/g,'&quot;')}"
+        oninput="TT_COLS[${i}].name=this.value;if(S.roster.length)previewDoc();">
+      <button onclick="cycleTTColAlign(${i})" title="정렬 변경"
+        style="font-size:11px;padding:2px 6px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg);cursor:pointer;min-width:26px;font-weight:600;color:var(--acc);"
+      >${TT_ALIGN_LABELS[col.align]||'좌'}</button>
       ${TT_COLS.length>1?`<button onclick="removeTTCol(${i})" style="background:none;border:none;cursor:pointer;color:#c00;font-size:13px;padding:0 2px;line-height:1;">✕</button>`:''}
     </div>
   `).join('');
 }
+function cycleTTColAlign(i){
+  const cur = TT_COLS[i].align||'left';
+  const next = TT_ALIGNS[(TT_ALIGNS.indexOf(cur)+1)%TT_ALIGNS.length];
+  TT_COLS[i].align = next;
+  renderTTColConfig();
+  if(S.roster.length) previewDoc();
+}
 function addTTCol(){
   saveTTRows();
-  TT_COLS.push('항목');
+  TT_COLS.push({name:'항목', align:'left'});
   TT_ROWS.forEach(r=>{ while(r.cols.length<TT_COLS.length) r.cols.push(''); });
   renderTTColConfig(); renderTTEditor();
   if(S.roster.length) previewDoc();
@@ -959,7 +971,7 @@ function renderTTEditor(){
   wrap.innerHTML = TT_ROWS.map((r,i)=>`
     <div class="tt-row" data-idx="${i}" style="display:flex;gap:5px;align-items:flex-start;margin-bottom:4px;">
       <input class="tt-time bi" style="width:68px;flex-shrink:0;" placeholder="09:00" value="${r.time}">
-      ${TT_COLS.map((_,ci)=>`<input class="tt-col-val bi" style="flex:1;" placeholder="${TT_COLS[ci].replace(/"/g,'&quot;')}" value="${((r.cols||[])[ci]||'').replace(/"/g,'&quot;')}">`).join('')}
+      ${TT_COLS.map((col,ci)=>`<input class="tt-col-val bi" style="flex:1;" placeholder="${col.name.replace(/"/g,'&quot;')}" value="${((r.cols||[])[ci]||'').replace(/"/g,'&quot;')}">`).join('')}
       <button onclick="removeTTRow(${i})" class="blk-del" title="삭제">✕</button>
     </div>
   `).join('');
@@ -979,9 +991,10 @@ function getTTHtml(){
   saveTTRows();
   const rows = TT_ROWS.filter(r=>r.time||r.cols.some(v=>v));
   if(!rows.length) return '<p style="color:#aaa;font-size:12pt;">시간표 내용을 입력해주세요.</p>';
+  const alignClass = a => a==='center'?'':a==='right'?' style="text-align:right"':' class="tl"';
   return `<table class="dt ttbl">
-    <thead><tr><th style="width:80px">시간</th>${TT_COLS.map(c=>`<th class="tl">${c}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${r.time}</td>${TT_COLS.map((_,ci)=>`<td class="tl">${((r.cols||[])[ci]||'').replace(/\n/g,'<br>')}</td>`).join('')}</tr>`).join('')}</tbody>
+    <thead><tr><th style="width:80px;text-align:center;">시간</th>${TT_COLS.map(col=>`<th${alignClass(col.align)}>${col.name}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr><td style="text-align:center;">${r.time}</td>${TT_COLS.map((col,ci)=>`<td${alignClass(col.align)}>${((r.cols||[])[ci]||'').replace(/\n/g,'<br>')}</td>`).join('')}</tr>`).join('')}</tbody>
   </table>`;
 }
 
@@ -2022,9 +2035,17 @@ function buildDoc(co,d){
   // 명단 33명 단위 페이지 분할
   const ROSTER_PER_PAGE = 33;
   function buildRosterDps(roster, cols){
+    // 컬럼별 고정 너비 (table-layout:fixed로 모든 페이지 동일 적용)
+    const colWidths = cols.map(c=>{
+      if(c.role==='number') return 'width:50px;';
+      if(c.role==='company') return 'width:28%;';
+      return ''; // data: 균등 분배
+    });
+    const thead=`<thead><tr>${cols.map((c,ci)=>`<th style="${colWidths[ci]}">${c.name}</th>`).join('')}</tr></thead>`;
+    const tableOpen=`<table class="dt" style="table-layout:fixed;width:100%;">`;
     if(!roster.length){
       const emptyRow=`<tr><td colspan="${cols.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
-      return `<div class="dp" data-page-type="roster"><div class="dat">(첨부) 2. 입과자 명단</div><table class="dt"><thead><tr>${cols.map(c=>`<th>${c.name}</th>`).join('')}</tr></thead><tbody>${emptyRow}</tbody></table></div>`;
+      return `<div class="dp" data-page-type="roster"><div class="dat">(첨부) 2. 입과자 명단</div>${tableOpen}${thead}<tbody>${emptyRow}</tbody></table></div>`;
     }
     let html='';
     for(let start=0; start<roster.length; start+=ROSTER_PER_PAGE){
@@ -2039,7 +2060,7 @@ function buildDoc(co,d){
           return `<td${isLeft?' class="tl"':''}>${v}</td>`;
         }).join('')+'</tr>';
       }).join('');
-      html+=`<div class="dp" data-page-type="roster"><div class="dat">${title}</div><table class="dt"><thead><tr>${cols.map(c=>`<th>${c.name}</th>`).join('')}</tr></thead><tbody>${chunkRows}</tbody></table></div>`;
+      html+=`<div class="dp" data-page-type="roster"><div class="dat">${title}</div>${tableOpen}${thead}<tbody>${chunkRows}</tbody></table></div>`;
     }
     return html;
   }
