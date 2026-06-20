@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대량 메일 발송 — DBLess</title>
+<link rel="stylesheet" href="dbless-common.css">
+</head>
+<body>
+
+<!-- ★★★ COMMON NAV — dbless-common.css .db-nav ★★★ -->
+<nav class="db-nav">
+  <a class="db-nav-logo" href="/"><em>DB</em>Less</a>
+  <div class="db-nav-links">
+    <a href="공문생성기.html">공문생성기</a>
+    <a href="멀티메일.html" class="active">대량메일발송</a>
+    <a href="pdf편집기.html">PDF편집기</a>
+    <a href="누끼따기.html">누끼따기</a>
+    <a href="timer.html">타이머</a>
+  </div>
+</nav>
+
+<!-- ★★★ COMMON PAGE HEADER — dbless-common.css .db-page-header ★★★ -->
+<header class="db-page-header">
+  <p class="db-page-eyebrow">02 / 대량메일발송</p>
+  <h1 class="db-page-title">대량 메일 발송</h1>
+  <p class="db-page-desc">엑셀 명단에서 수신자를 불러와 개인화된 메일을 Outlook으로 한 번에 발송합니다.</p>
+</header>
+
+<div class="db-wrap">
+
+  <!-- 다운로드 -->
+  <div class="db-dl-block">
+    <div class="db-dl-info">
+      <h2>설치 파일 다운로드</h2>
+      <p>ZIP 파일을 받아 압축을 풀고, <code>mailsender.exe</code>를 실행하세요.<br>별도 설치 과정 없이 바로 사용할 수 있습니다.</p>
+      <div class="db-dl-meta">Windows 전용 · Outlook 필요 · 사내 네트워크 동작</div>
+    </div>
+    <a href="https://github.com/danbanless/dbless/raw/main/mailsender_1.00.7z" class="db-btn" download>다운로드 (.7z, 11MB)</a>
+  </div>
+
+  <!-- 요구사항 -->
+  <div class="db-req-box">
+    <h3>실행 환경 요구사항</h3>
+    <ul class="db-req-list">
+      <li>Windows 10 이상</li>
+      <li>Microsoft Outlook 설치 및 계정 로그인 상태</li>
+      <li>ZIP 파일 내 3개 파일이 같은 폴더에 있어야 함</li>
+    </ul>
+  </div>
+
+  <!-- 파일 구성 -->
+  <p class="db-section-title">파일 구성</p>
+  <div class="db-file-tree">
+    <span class="folder">mailsender/</span><br>
+    &nbsp;&nbsp;├── <span class="file">mailsender.exe</span>&nbsp;&nbsp;&nbsp;<span style="color:#666">← 실행 파일</span><br>
+    &nbsp;&nbsp;├── <span class="file">index_v2.html</span>&nbsp;&nbsp;&nbsp;<span style="color:#666">← UI 화면</span><br>
+    &nbsp;&nbsp;└── <span class="file">tinymce/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#666">← 에디터 (폴더째 필요)</span>
+  </div>
+
+  <!-- 주요 기능 -->
+  <p class="db-section-title">주요 기능</p>
+  <div class="db-feature-grid">
+    <div class="db-feature-item">
+      <h4>엑셀 명단 불러오기</h4>
+      <p>xlsx 파일을 올리면 수신자 목록이 자동으로 채워집니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>개인화 본문</h4>
+      <p>{1}~{25} 자리표시자로 수신자마다 다른 내용을 삽입합니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>발송 전 미리보기</h4>
+      <p>각 수신자에게 보내지는 메일을 한 명씩 확인할 수 있습니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>첨부파일 지원</h4>
+      <p>공통 첨부파일을 전원에게 또는 개인별로 다르게 첨부합니다.</p>
+    </div>
+  </div>
+
+  <!-- 사용 방법 -->
+  <p class="db-section-title">사용 방법</p>
+  <div class="db-step-list">
+    <div class="db-step">
+      <span class="db-step-num">01</span>
+      <div class="db-step-body">
+        <h4>ZIP 압축 해제</h4>
+        <p>다운로드한 ZIP 파일을 원하는 폴더에 압축 해제합니다.<br>세 파일(<code>mailsender.exe</code>, <code>index_v2.html</code>, <code>tinymce/</code>)이 같은 폴더에 있어야 합니다.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">02</span>
+      <div class="db-step-body">
+        <h4>mailsender.exe 실행</h4>
+        <p>exe를 더블클릭하면 브라우저가 자동으로 열리며 발송 화면이 나타납니다.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">03</span>
+      <div class="db-step-body">
+        <h4>수신자 명단 불러오기</h4>
+        <p>엑셀 파일을 업로드하거나 직접 붙여넣기로 수신자 목록을 입력합니다.<br>첫 번째 열이 이름, 두 번째 열이 이메일 주소입니다.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">04</span>
+      <div class="db-step-body">
+        <h4>제목 및 본문 작성</h4>
+        <p>본문에 <code>{1}</code>, <code>{2}</code> 등을 넣으면 각 수신자의 열 데이터로 자동 치환됩니다.<br>예: <code>안녕하세요, {1}님.</code></p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">05</span>
+      <div class="db-step-body">
+        <h4>미리보기 확인 후 발송</h4>
+        <p>수신자별로 최종 메일을 미리보기로 확인한 뒤 [전체 발송] 버튼을 누릅니다.<br>Outlook이 자동으로 메일을 발송합니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주의사항 -->
+  <div class="db-warn-box">
+    <strong>주의사항</strong>
+    <p>
+      Outlook이 실행 중이고 계정이 로그인된 상태여야 합니다.<br>
+      세 파일은 항상 같은 폴더에 있어야 합니다. 파일을 분리하면 작동하지 않습니다.<br>
+      사내 보안 정책에 따라 exe 실행이 차단될 수 있습니다. IT 부서에 문의하세요.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

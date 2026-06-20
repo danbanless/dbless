@@ -1,0 +1,340 @@
+/* ============================================================
+   DBLess Common Styles
+   모든 세부 페이지가 공유하는 Nav + Page Header
+   index.html의 디자인 언어와 동일하게 맞춤
+   업데이트: 2026 — 토스 참조 리디자인
+   ============================================================ */
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── 공통 변수 ── */
+:root {
+  --black:        #111110;
+  --white:        #FFFFFF;
+  --off-white:    #F8F8F8;
+  --gray-100:     #F2F2F2;
+  --gray-300:     #D3D1C7;
+  --gray-500:     #888780;
+  --gray-700:     #5F5E5A;
+  --indigo:       #534AB7;
+  --indigo-light: #EEEDFE;
+  --indigo-mid:   #AFA9EC;
+  --indigo-dark:  #3C3489;
+  --terra:        #A54B00;
+  --terra-light:  #FAF0E1;
+  --mono:         'JetBrains Mono', monospace;
+}
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; scrollbar-gutter: stable; }
+
+body {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+  background: var(--white);
+  color: var(--black);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   ★★★ COMMON NAV ★★★
+   모든 페이지 동일 — 이 블록을 직접 수정하지 마세요
+   ============================================================ */
+.db-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  height: 60px;
+}
+.db-nav-logo {
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--black);
+  text-decoration: none;
+  border: none;
+}
+.db-nav-logo em { font-style: normal; color: var(--indigo); }
+.db-nav-logo:hover { border: none; }
+
+.db-nav-links { display: flex; gap: 28px; list-style: none; }
+.db-nav-links a {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gray-500);
+  text-decoration: none;
+  border: none;
+  transition: color 150ms;
+  padding: 0;
+  height: auto;
+}
+.db-nav-links a:hover  { color: var(--black); background: none; }
+.db-nav-links a.active { color: var(--indigo); font-weight: 500; }
+
+/* ============================================================
+   ★★★ COMMON PAGE HEADER ★★★
+   모든 세부 페이지 상단 타이틀 영역 — 이 블록을 직접 수정하지 마세요
+   ============================================================ */
+.db-page-header {
+  padding: 36px 48px 27px;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
+}
+.db-page-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--indigo);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.db-page-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 1px;
+  background: var(--indigo);
+  flex-shrink: 0;
+}
+.db-page-title {
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--black);
+  line-height: 1.1;
+  margin-bottom: 12px;
+  word-break: keep-all;
+}
+.db-page-desc {
+  font-size: 15px;
+  color: var(--gray-700);
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+/* ── 본문 공통 래퍼 ── */
+.db-wrap {
+  max-width: 860px;
+  padding: 48px 48px 96px;
+}
+
+/* ── 섹션 타이틀 ── */
+.db-section-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-100);
+  margin-bottom: 20px;
+}
+
+/* ── 코드 블록 ── */
+.db-file-tree {
+  background: #1A1A1A;
+  color: #E8E8E8;
+  border-radius: 8px;
+  padding: 20px 24px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 2;
+  margin-bottom: 32px;
+}
+.db-file-tree .folder { color: #F0C387; }
+.db-file-tree .file   { color: var(--indigo-mid); }
+
+/* ── 다운로드 블록 ── */
+.db-dl-block {
+  border: 1px solid var(--gray-100);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  transition: background 150ms;
+}
+.db-dl-block:hover { background: var(--off-white); }
+.db-dl-info { flex: 1; }
+.db-dl-info h2 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin-bottom: 6px;
+  color: var(--black);
+}
+.db-dl-info p  { font-size: 13px; color: var(--gray-700); line-height: 1.6; }
+.db-dl-meta    { font-size: 11px; color: var(--gray-500); margin-top: 8px; font-family: var(--mono); }
+.db-dl-info code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--indigo-light);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--indigo);
+}
+
+/* ── 버튼 ── */
+.db-btn {
+  flex-shrink: 0;
+  background: var(--black);
+  color: #FFFFFF;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 150ms;
+}
+.db-btn:hover { background: var(--indigo); border: none; }
+
+.db-btn-indigo {
+  background: var(--indigo);
+  color: #FFFFFF;
+}
+.db-btn-indigo:hover { background: var(--indigo-dark); }
+
+/* ── 요구사항 박스 ── */
+.db-req-box {
+  border-left: 2px solid var(--indigo);
+  padding: 16px 20px;
+  margin-bottom: 32px;
+  background: var(--indigo-light);
+  border-radius: 0 8px 8px 0;
+}
+.db-req-box h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--indigo);
+  margin-bottom: 10px;
+  font-family: var(--mono);
+}
+.db-req-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.db-req-list li { font-size: 13px; color: var(--gray-700); display: flex; align-items: center; gap: 8px; }
+.db-req-list li::before { content: '—'; color: var(--indigo); flex-shrink: 0; }
+
+/* ── 기능 그리드 ── */
+.db-feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.db-feature-item {
+  background: var(--off-white);
+  border-radius: 12px;
+  padding: 24px;
+}
+.db-feature-item h4 { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; color: var(--black); }
+.db-feature-item p  { font-size: 13px; color: var(--gray-700); line-height: 1.6; }
+
+/* ── 스텝 ── */
+.db-step-list { display: flex; flex-direction: column; margin-bottom: 32px; }
+.db-step {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.db-step:first-child { border-top: 1px solid var(--gray-100); }
+.db-step-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--indigo-mid);
+  min-width: 24px;
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+}
+.db-step-body h4 { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; color: var(--black); }
+.db-step-body p  { font-size: 13px; color: var(--gray-700); line-height: 1.6; }
+.db-step-body code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--indigo-light);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--indigo);
+}
+
+/* ── 경고 박스 ── */
+.db-warn-box {
+  border-left: 2px solid var(--terra);
+  padding: 16px 20px;
+  margin-bottom: 32px;
+  background: var(--terra-light);
+  border-radius: 0 8px 8px 0;
+}
+.db-warn-box strong {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--terra);
+  display: block;
+  margin-bottom: 8px;
+}
+.db-warn-box p { font-size: 13px; color: var(--gray-700); line-height: 1.7; }
+
+/* ── 링크 전역 리셋 (nav/btn 제외) ── */
+a {
+  color: var(--indigo);
+  text-decoration: none;
+  border-bottom: 1px solid var(--indigo-mid);
+  transition: color 150ms, border-color 150ms;
+}
+a:hover {
+  color: var(--indigo-dark);
+  border-color: var(--indigo-dark);
+}
+
+/* ── 포커스 링 전역 ── */
+:focus-visible {
+  outline: 2px solid var(--indigo-mid);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── 구분선 ── */
+hr {
+  border: none;
+  border-top: 1px solid var(--gray-100);
+  margin: 32px 0;
+}
+
+/* ── 모바일 ── */
+@media (max-width: 640px) {
+  .db-nav { padding: 0 24px; height: 56px; }
+  .db-nav-links { display: none; }
+  .db-page-header { padding: 30px 24px 27px; }
+  .db-wrap { padding: 32px 24px 72px; }
+  .db-dl-block { flex-direction: column; align-items: flex-start; }
+  .db-feature-grid { grid-template-columns: 1fr; }
+}

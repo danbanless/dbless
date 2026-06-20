@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBLess — 단순반복업무 제로화</title>
+  <link rel="stylesheet" href="dbless-common.css">
+  <style>
+    /* ── 홈 전용 스타일 ── */
+
+    /* HERO */
+    .home-hero {
+      padding: 88px 48px 80px;
+      background: #FFFFFF;
+      border-bottom: 1px solid #F2F2F2;
+    }
+    .home-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--indigo);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .home-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 18px;
+      height: 1px;
+      background: var(--indigo);
+    }
+    .home-hero h1 {
+      font-family: 'Pretendard Variable', Pretendard, sans-serif;
+      font-size: clamp(38px, 5.5vw, 52px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+      color: var(--black);
+      margin-bottom: 22px;
+    }
+    .home-hero h1 s {
+      color: #CCCCCC;
+      text-decoration-color: var(--terra);
+    }
+    .home-hero h1 .accent { color: var(--indigo); }
+    .home-hero-sub {
+      font-size: 16px;
+      color: var(--gray-700);
+      line-height: 1.75;
+      margin-bottom: 36px;
+      max-width: 420px;
+    }
+    .home-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .home-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .home-pill-indigo { background: var(--indigo-light); color: #3C3489; }
+    .home-pill-dim    { background: #F5F5F5; color: var(--gray-500); border: 1px solid #EBEBEB; }
+
+    /* PAIN */
+    .home-pain {
+      padding: 72px 48px;
+      background: #F8F8F8;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .home-section-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--indigo);
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .home-pain h2 {
+      font-family: 'Pretendard Variable', Pretendard, sans-serif;
+      font-size: clamp(26px, 3.5vw, 34px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.2;
+      color: var(--black);
+      margin-bottom: 48px;
+    }
+    .home-pain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .home-pain-item {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 28px 24px;
+    }
+    .home-pain-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--indigo-mid);
+      margin-bottom: 14px;
+      letter-spacing: 0.06em;
+    }
+    .home-pain-text { font-size: 14px; color: var(--gray-700); line-height: 1.7; }
+    .home-pain-text strong { color: var(--black); font-weight: 600; }
+
+    /* TOOLS */
+    .home-tools {
+      padding: 72px 48px 0;
+      background: #FFFFFF;
+    }
+    .home-tools-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .home-tools-head h2 {
+      font-family: 'Pretendard Variable', Pretendard, sans-serif;
+      font-size: clamp(26px, 3.5vw, 34px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      color: var(--black);
+    }
+    .home-tools-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--indigo-mid);
+    }
+    .home-tool-row {
+      display: grid;
+      grid-template-columns: 36px 1fr 20px;
+      align-items: start;
+      gap: 24px;
+      padding: 32px 0;
+      border-top: 1px solid #F2F2F2;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: none;
+    }
+    .home-tool-row:last-child { border-bottom: 1px solid #F2F2F2; }
+    .home-tool-row:hover .home-tool-name { color: var(--indigo); }
+    .home-tool-row:hover .home-tool-arrow { color: var(--indigo); transform: translateX(4px); }
+    .home-tool-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #CCCCCC;
+      padding-top: 4px;
+      letter-spacing: 0.04em;
+    }
+    .home-tool-name {
+      font-family: 'Pretendard Variable', Pretendard, sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: var(--black);
+      margin-bottom: 8px;
+      transition: color 150ms;
+    }
+    .home-tool-desc {
+      font-size: 14px;
+      color: var(--gray-700);
+      line-height: 1.7;
+      margin-bottom: 14px;
+      max-width: 500px;
+    }
+    .home-tool-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .home-tool-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      background: var(--indigo-light);
+      color: var(--indigo);
+      letter-spacing: 0.02em;
+    }
+    .home-tool-arrow {
+      font-size: 16px;
+      color: #CCCCCC;
+      padding-top: 4px;
+      transition: color 150ms, transform 150ms;
+    }
+
+    /* CTA — 다크 */
+    .home-cta {
+      background: #111111;
+      padding: 72px 48px;
+    }
+    .home-cta-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--indigo-mid);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .home-cta h3 {
+      font-family: 'Pretendard Variable', Pretendard, sans-serif;
+      font-size: clamp(26px, 3.5vw, 34px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      color: #FFFFFF;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    .home-cta p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 32px;
+      line-height: 1.75;
+    }
+    .home-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 26px;
+      background: var(--indigo);
+      color: #FFFFFF;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      font-family: 'Pretendard Variable', Pretendard, sans-serif;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+      transition: background 150ms;
+    }
+    .home-cta-btn:hover { background: var(--indigo-mid); }
+
+    /* FOOTER */
+    .home-footer {
+      padding: 28px 48px;
+      border-top: 1px solid #222;
+      background: #111111;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .home-footer-l {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 0.04em;
+    }
+    .home-footer-r { font-size: 12px; color: rgba(255,255,255,0.25); }
+
+    /* 모바일 */
+    @media (max-width: 640px) {
+      .home-hero, .home-pain, .home-tools, .home-cta, .home-footer {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+      .home-hero { padding-top: 56px; padding-bottom: 56px; }
+      .home-pain-grid { grid-template-columns: 1fr; }
+      .home-tool-row { grid-template-columns: 28px 1fr 16px; gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV (dbless-common.css) -->
+  <nav class="db-nav">
+    <a class="db-nav-logo" href="index.html"><em>DB</em>Less</a>
+    <div class="db-nav-links">
+      <a href="공문생성기.html">공문생성기</a>
+      <a href="멀티메일.html">대량메일발송</a>
+      <a href="pdf편집기.html">PDF편집기</a>
+      <a href="누끼따기.html">누끼따기</a>
+      <a href="timer.html">타이머</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="home-hero">
+    <p class="home-eyebrow">by Tani K &nbsp;—&nbsp; 단반없 프로젝트</p>
+    <h1>지겨운 일은<br><s>사람이</s>&nbsp;<span class="accent">도구가</span> 한다</h1>
+    <p class="home-hero-sub">
+      반복되는 오피스 업무를 브라우저에서 바로 처리합니다.<br>
+      설치 없이. 서버 없이. 파일이 외부로 나가지 않습니다.
+    </p>
+    <div class="home-pills">
+      <span class="home-pill home-pill-indigo">✓ 설치 불필요</span>
+      <span class="home-pill home-pill-indigo">✓ 서버 전송 없음</span>
+      <span class="home-pill home-pill-indigo">✓ 완전 무료</span>
+      <span class="home-pill home-pill-dim">도구 5가지</span>
+    </div>
+  </section>
+
+  <!-- PAIN -->
+  <section class="home-pain">
+    <p class="home-section-tag">이런 상황 있으셨나요</p>
+    <h2>매번 하는 그 작업,<br>사실 도구가 해야 할 일입니다</h2>
+    <div class="home-pain-grid">
+      <div class="home-pain-item">
+        <p class="home-pain-num">01</p>
+        <p class="home-pain-text">공문 10개를<br><strong>하나씩 워드에서</strong><br>만들고 있다</p>
+      </div>
+      <div class="home-pain-item">
+        <p class="home-pain-num">02</p>
+        <p class="home-pain-text">메일 200통을<br><strong>이름만 바꿔가며</strong><br>보내고 있다</p>
+      </div>
+      <div class="home-pain-item">
+        <p class="home-pain-num">03</p>
+        <p class="home-pain-text">PDF 합치려고<br><strong>유료 사이트에</strong><br>업로드하고 있다</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLS -->
+  <section class="home-tools">
+    <div class="home-tools-head">
+      <h2>도구 목록</h2>
+      <span class="home-tools-count">05</span>
+    </div>
+
+    <a class="home-tool-row" href="공문생성기.html">
+      <span class="home-tool-num">01</span>
+      <div>
+        <p class="home-tool-name">공문 생성기</p>
+        <p class="home-tool-desc">수신처별 공문을 블록으로 조립하고 PDF로 출력합니다. 회사별 분리 출력, 일괄 ZIP 저장까지.</p>
+        <div class="home-tool-tags">
+          <span class="home-tool-tag">PDF 출력</span>
+          <span class="home-tool-tag">회사별 분리</span>
+          <span class="home-tool-tag">ZIP 저장</span>
+        </div>
+      </div>
+      <span class="home-tool-arrow">→</span>
+    </a>
+
+    <a class="home-tool-row" href="멀티메일.html">
+      <span class="home-tool-num">02</span>
+      <div>
+        <p class="home-tool-name">대량 메일 발송</p>
+        <p class="home-tool-desc">엑셀 명단에서 수신자를 불러와 이름·소속이 개인화된 메일을 Outlook으로 한 번에 발송합니다.</p>
+        <div class="home-tool-tags">
+          <span class="home-tool-tag">엑셀 연동</span>
+          <span class="home-tool-tag">Outlook COM</span>
+          <span class="home-tool-tag">개인화</span>
+        </div>
+      </div>
+      <span class="home-tool-arrow">→</span>
+    </a>
+
+    <a class="home-tool-row" href="pdf편집기.html">
+      <span class="home-tool-num">03</span>
+      <div>
+        <p class="home-tool-name">PDF 편집기</p>
+        <p class="home-tool-desc">페이지를 드래그로 재배치하거나 삭제·추출·삽입합니다. 파일이 서버로 전송되지 않습니다.</p>
+        <div class="home-tool-tags">
+          <span class="home-tool-tag">페이지 재배치</span>
+          <span class="home-tool-tag">추출·병합</span>
+          <span class="home-tool-tag">로컬 처리</span>
+        </div>
+      </div>
+      <span class="home-tool-arrow">→</span>
+    </a>
+
+    <a class="home-tool-row" href="누끼따기.html">
+      <span class="home-tool-num">04</span>
+      <div>
+        <p class="home-tool-name">누끼따기</p>
+        <p class="home-tool-desc">AI가 이미지 배경을 자동으로 제거합니다. 브러시로 수동 보정도 가능. 파일이 외부로 나가지 않아요.</p>
+        <div class="home-tool-tags">
+          <span class="home-tool-tag">AI 배경 제거</span>
+          <span class="home-tool-tag">수동 보정</span>
+          <span class="home-tool-tag">로컬 처리</span>
+        </div>
+      </div>
+      <span class="home-tool-arrow">→</span>
+    </a>
+
+    <a class="home-tool-row" href="timer.html">
+      <span class="home-tool-num">05</span>
+      <div>
+        <p class="home-tool-name">교육용 타이머</p>
+        <p class="home-tool-desc">교육장 프로젝터에 바로 띄우는 카운트다운 타이머. 사전 설정·컬러 전환·음성 알림 포함.</p>
+        <div class="home-tool-tags">
+          <span class="home-tool-tag">프로젝터 최적화</span>
+          <span class="home-tool-tag">풀스크린</span>
+          <span class="home-tool-tag">음성 알림</span>
+        </div>
+      </div>
+      <span class="home-tool-arrow">→</span>
+    </a>
+  </section>
+
+  <!-- CTA -->
+  <div class="home-cta">
+    <p class="home-cta-tag">건의하기</p>
+    <h3>이런 것도<br>만들어줄 수 있어요</h3>
+    <p>
+      반복해서 하기 싫은 업무가 있으면 건의해 주세요.<br>
+      범용성 있는 건 도구로 만들어 여기에 추가합니다.
+    </p>
+    <a class="home-cta-btn" href="https://t.me/dbless_bot" target="_blank">
+      텔레그램으로 건의하기 →
+    </a>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="home-footer">
+    <span class="home-footer-l">DBLess · By Tani K</span>
+    <span class="home-footer-r">D단순 B반복 Less없는 회사생활</span>
+  </footer>
+
+</body>
+</html>

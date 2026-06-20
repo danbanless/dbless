@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>교육용 타이머 — DBLess</title>
+<link rel="stylesheet" href="dbless-common.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+/* ── 타이머 전용 변수 (common.css에 없는 것만) ── */
+:root {
+  --terra-mid: #C8713C;
+  --danger:    #c0392b;
+}
+
+.timer-wrap {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+  flex: 1;
+  width: 100%;
+}
+
+/* 프리셋 */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.preset-btn {
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  border: 1px solid var(--gray-100);
+  background: var(--white);
+  color: var(--gray-700);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.1s, color 0.1s;
+}
+.preset-btn:hover { background: var(--off-white); color: var(--black); }
+.preset-btn.active {
+  background: var(--black);
+  color: #FFFFFF;
+  border-color: var(--black);
+}
+
+/* 커스텀 입력 */
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 40px;
+}
+.custom-row label { font-size: 12px; color: var(--gray-500); white-space: nowrap; }
+.custom-row input {
+  width: 72px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  border: 1px solid var(--gray-100);
+  background: var(--white);
+  color: var(--black);
+  outline: none;
+  border-radius: 8px;
+}
+.custom-row input:focus { border-color: var(--indigo); }
+.custom-row span { font-size: 12px; color: var(--gray-500); }
+.custom-row button {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  border: 1px solid var(--gray-100);
+  background: var(--white);
+  color: var(--black);
+  cursor: pointer;
+  border-radius: 8px;
+}
+.custom-row button:hover { background: var(--off-white); }
+
+/* 디스플레이 */
+.display-area { text-align: center; margin-bottom: 16px; }
+.time-display {
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 100px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--black);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s;
+}
+.time-display.warning { color: var(--terra); }
+.time-display.danger  { color: var(--danger); }
+
+/* 진행 바 */
+.prog-bar {
+  width: 100%;
+  height: 2px;
+  background: var(--gray-300);
+  margin: 20px 0 32px;
+}
+.prog-fill {
+  height: 100%;
+  background: var(--black);
+  transition: width 0.8s linear, background 0.3s;
+}
+.prog-fill.warning { background: var(--terra); }
+.prog-fill.danger  { background: var(--danger); }
+
+/* 컨트롤 */
+.controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.ctrl-btn {
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  border: 1px solid var(--gray-100);
+  background: var(--white);
+  color: var(--black);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  transition: background 0.1s;
+}
+.ctrl-btn:hover { background: var(--off-white); }
+.ctrl-btn.primary {
+  background: var(--black);
+  color: #FFFFFF;
+  border-color: var(--black);
+}
+.ctrl-btn.primary:hover { background: var(--indigo); border-color: var(--indigo); }
+
+.fs-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  color: var(--gray-500);
+  border: 1px solid var(--gray-100);
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.1s, color 0.1s;
+}
+.fs-btn:hover { background: var(--off-white); color: var(--black); }
+
+.status-label {
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 16px;
+  min-height: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+}
+
+/* ── 전체화면 모드 ── */
+body.fs-mode { background: #0a0a0a; }
+body.fs-mode .db-nav,
+body.fs-mode .db-page-header { display: none; }
+
+body.fs-mode .timer-wrap {
+  max-width: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 0;
+}
+
+/* 전체화면에서 프리셋·커스텀 입력 숨김 */
+body.fs-mode .preset-grid,
+body.fs-mode .custom-row { display: none; }
+
+body.fs-mode .display-area { margin-bottom: 0; }
+
+body.fs-mode .prog-bar {
+  width: 480px;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  margin: 20px 0 28px;
+}
+body.fs-mode .prog-fill { background: rgba(255,255,255,0.6); }
+body.fs-mode .prog-fill.warning { background: var(--terra-mid); }
+body.fs-mode .prog-fill.danger  { background: #ff6b6b; }
+
+body.fs-mode .controls { margin-bottom: 12px; }
+
+body.fs-mode .fs-btn {
+  color: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.1);
+}
+body.fs-mode .fs-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+body.fs-mode .status-label { color: rgba(255,255,255,0.25); margin-top: 8px; }
+
+body.fs-mode .time-display {
+  font-size: 180px;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+body.fs-mode .time-display.warning { color: var(--terra-mid); }
+body.fs-mode .time-display.danger  { color: #ff6b6b; }
+
+body.fs-mode .prog-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  margin: 16px 0 28px;
+}
+body.fs-mode .prog-fill { background: rgba(255,255,255,0.6); }
+body.fs-mode .prog-fill.warning { background: var(--terra-mid); }
+body.fs-mode .prog-fill.danger  { background: #ff6b6b; }
+
+body.fs-mode .ctrl-btn {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: #fff;
+}
+body.fs-mode .ctrl-btn:hover { background: rgba(255,255,255,0.15); }
+body.fs-mode .ctrl-btn.primary {
+  background: rgba(255,255,255,0.9);
+  color: #0a0a0a;
+  border-color: transparent;
+}
+body.fs-mode .ctrl-btn.primary:hover { background: #fff; }
+
+body.fs-mode .fs-btn {
+  color: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.1);
+}
+body.fs-mode .fs-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+body.fs-mode .status-label { color: rgba(255,255,255,0.25); }
+
+@media (max-width: 640px) {
+  .timer-wrap { padding: 32px 20px 60px; }
+  .time-display { font-size: 72px; }
+  body.fs-mode .time-display { font-size: 96px; }
+  body.fs-mode .timer-wrap { padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ★★★ COMMON NAV — dbless-common.css .db-nav ★★★ -->
+<nav class="db-nav">
+  <a class="db-nav-logo" href="/"><em>DB</em>Less</a>
+  <div class="db-nav-links">
+    <a href="공문생성기.html">공문생성기</a>
+    <a href="멀티메일.html">대량메일발송</a>
+    <a href="pdf편집기.html">PDF편집기</a>
+    <a href="누끼따기.html">누끼따기</a>
+    <a href="timer.html" class="active">타이머</a>
+  </div>
+</nav>
+
+<!-- ★★★ COMMON PAGE HEADER — dbless-common.css .db-page-header ★★★ -->
+<header class="db-page-header">
+  <p class="db-page-eyebrow">05 / 타이머</p>
+  <h1 class="db-page-title">교육용 타이머</h1>
+  <p class="db-page-desc">프로젝터에 바로 띄우는 카운트다운 타이머. 전체화면에서도 시간 설정이 가능합니다.</p>
+</header>
+
+<div class="timer-wrap">
+
+  <div class="preset-grid">
+    <button class="preset-btn" data-min="5">5분</button>
+    <button class="preset-btn active" data-min="10">10분</button>
+    <button class="preset-btn" data-min="15">15분</button>
+    <button class="preset-btn" data-min="20">20분</button>
+    <button class="preset-btn" data-min="30">30분</button>
+    <button class="preset-btn" data-min="60">60분</button>
+    <button class="preset-btn" data-min="90">90분</button>
+    <button class="preset-btn" data-min="120">120분</button>
+  </div>
+
+  <div class="custom-row">
+    <label for="customMin">직접 입력</label>
+    <input type="number" id="customMin" min="1" max="300" placeholder="분" />
+    <span>분</span>
+    <button onclick="applyCustom()">적용</button>
+  </div>
+
+  <div class="display-area">
+    <div class="time-display" id="timeDisplay">10:00</div>
+  </div>
+
+  <div class="prog-bar">
+    <div class="prog-fill" id="progFill" style="width:100%"></div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn primary" id="startBtn" onclick="toggleTimer()">
+      <i class="ti ti-player-play"></i> 시작
+    </button>
+    <button class="ctrl-btn" onclick="resetTimer()">
+      <i class="ti ti-refresh"></i> 초기화
+    </button>
+  </div>
+
+  <button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()">
+    <i class="ti ti-arrows-maximize"></i> 전체화면
+  </button>
+
+  <div class="status-label" id="statusLabel">10분 타이머 준비됨</div>
+
+</div>
+
+<script>
+let totalSec = 600, remainSec = 600, running = false, interval = null, audioCtx = null;
+
+function fmt(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+function updateDisplay() {
+  const d = document.getElementById('timeDisplay');
+  const pf = document.getElementById('progFill');
+  const ratio = totalSec > 0 ? remainSec / totalSec : 0;
+  d.textContent = fmt(remainSec);
+  pf.style.width = (ratio * 100) + '%';
+  d.className = 'time-display';
+  pf.className = 'prog-fill';
+  if (remainSec <= 30 && remainSec > 0) {
+    d.classList.add('danger');   /* 30초 이하 → 빨강 */
+    pf.classList.add('danger');
+  } else if (ratio <= 0.2 && remainSec > 0) {
+    d.classList.add('warning');  /* 잔여 20% 이하 → 테라코타 */
+    pf.classList.add('warning');
+  }
+}
+function setMinutes(min) {
+  if (running) stopTimer();
+  totalSec = min * 60; remainSec = totalSec;
+  updateDisplay();
+  document.getElementById('statusLabel').textContent = min + '분 타이머 준비됨';
+  document.getElementById('startBtn').innerHTML = '<i class="ti ti-player-play"></i> 시작';
+  document.getElementById('startBtn').className = 'ctrl-btn primary';
+}
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    setMinutes(parseInt(this.dataset.min));
+  });
+});
+function applyCustom() {
+  const v = parseInt(document.getElementById('customMin').value);
+  if (!v || v < 1 || v > 300) { document.getElementById('statusLabel').textContent = '1~300 사이 분을 입력하세요'; return; }
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  setMinutes(v);
+  document.getElementById('customMin').value = '';
+}
+function beep(freq, dur) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = freq; o.type = 'sine';
+    g.gain.setValueAtTime(0.35, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+function tick() {
+  if (remainSec <= 0) {
+    stopTimer();
+    document.getElementById('statusLabel').textContent = '시간 종료!';
+    beep(880, 0.3); setTimeout(()=>beep(880,0.3),400); setTimeout(()=>beep(1100,0.8),800);
+    return;
+  }
+  remainSec--;
+  updateDisplay();
+  if (remainSec === 60) { beep(660, 0.25); document.getElementById('statusLabel').textContent = '1분 남았습니다'; }
+  else if (remainSec === 30) { beep(880, 0.25); document.getElementById('statusLabel').textContent = '30초 남았습니다'; }
+  else if (remainSec <= 10 && remainSec > 0) { beep(440, 0.12); document.getElementById('statusLabel').textContent = remainSec + '초'; }
+}
+function toggleTimer() { running ? stopTimer() : startTimer(); }
+function startTimer() {
+  if (remainSec <= 0) return;
+  running = true; interval = setInterval(tick, 1000);
+  document.getElementById('startBtn').innerHTML = '<i class="ti ti-player-pause"></i> 일시정지';
+  document.getElementById('startBtn').className = 'ctrl-btn';
+  document.getElementById('statusLabel').textContent = '진행 중...';
+}
+function stopTimer() {
+  running = false; clearInterval(interval);
+  document.getElementById('startBtn').innerHTML = '<i class="ti ti-player-play"></i> 계속';
+  document.getElementById('startBtn').className = 'ctrl-btn primary';
+  if (remainSec > 0) document.getElementById('statusLabel').textContent = fmt(remainSec) + ' 남음';
+}
+function resetTimer() {
+  stopTimer(); remainSec = totalSec; updateDisplay();
+  document.getElementById('startBtn').innerHTML = '<i class="ti ti-player-play"></i> 시작';
+  document.getElementById('startBtn').className = 'ctrl-btn primary';
+  document.getElementById('statusLabel').textContent = Math.floor(totalSec/60) + '분 타이머 준비됨';
+}
+function toggleFullscreen() {
+  const fsBtn = document.getElementById('fsBtn');
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().then(() => {
+      document.body.classList.add('fs-mode');
+      fsBtn.innerHTML = '<i class="ti ti-arrows-minimize"></i> 전체화면 종료';
+    }).catch(()=>{});
+  } else {
+    document.exitFullscreen().then(() => {
+      document.body.classList.remove('fs-mode');
+      fsBtn.innerHTML = '<i class="ti ti-arrows-maximize"></i> 전체화면';
+    }).catch(()=>{});
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    document.body.classList.remove('fs-mode');
+    document.getElementById('fsBtn').innerHTML = '<i class="ti ti-arrows-maximize"></i> 전체화면';
+  }
+});
+updateDisplay();
+</script>
+</body>
+</html>

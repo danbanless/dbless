@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 편집기 — DBLess</title>
+<link rel="stylesheet" href="dbless-common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --bg:var(--white);--surface:#FFFFFF;--border:var(--gray-100);
+  --text-primary:var(--black);--text-secondary:var(--gray-700);--text-muted:var(--gray-500);
+  --accent:var(--indigo);--accent-light:var(--indigo-light);--accent-hover:var(--indigo-dark);
+  --danger:#c0392b;--danger-light:#fff5f5;
+  --success:#2f9e44;--success-light:#ebfbee;
+  --shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --radius:8px;--font:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text-primary);min-height:100vh;padding-bottom:80px;}
+/* header style removed — using db-page-header from dbless-common.css */
+.logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#fff;}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;}
+.subtitle{font-size:13px;color:#a8bcce;font-weight:400;}
+.app{max-width:1100px;margin:0 auto;padding:28px 24px 0;display:grid;grid-template-columns:1fr 300px;gap:24px;}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:var(--shadow);}
+.section-title{font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+/* Upload */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px 24px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-light);}
+.upload-zone .upload-icon{font-size:32px;margin-bottom:10px;display:block;}
+.upload-zone h3{font-size:15px;font-weight:600;margin-bottom:4px;}
+.upload-zone p{font-size:13px;color:var(--text-secondary);}
+#fileInput,#insertInput{display:none;}
+/* File info */
+.file-info{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--accent-light);border:1px solid #c5d0fa;border-radius:var(--radius);margin-bottom:0;}
+.file-icon{width:34px;height:34px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.file-name{font-size:14px;font-weight:600;}
+.file-meta{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+.btn-reset{margin-left:auto;background:none;border:1px solid #c5d0fa;border-radius:6px;padding:5px 12px;font-size:12px;color:var(--accent);cursor:pointer;white-space:nowrap;}
+.btn-reset:hover{background:#fff;}
+/* Toolbar sticky */
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;
+  position:sticky;top:56px;z-index:100;
+  background:var(--surface);
+  padding:10px 20px;
+  margin:0 -20px;
+  border-bottom:1px solid var(--border);
+  border-top:1px solid var(--border);
+  margin-top:12px;
+  margin-bottom:0;}
+/* Grid wrapper */
+.grid-wrapper{padding-top:16px;}
+/* Thumb grid */
+.thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;position:relative;}
+.thumb-card.drag-target-before{outline:3px solid var(--accent);outline-offset:2px;}
+/* Thumb card */
+.thumb-card{
+  background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;cursor:pointer;transition:border-color .15s, transform .1s;
+  user-select:none;position:relative;margin:6px;
+}
+.thumb-card:hover{border-color:#adb5db;}
+.thumb-card.selected{border-color:var(--accent);background:var(--accent-light);}
+.thumb-card.deleted{opacity:.35;border-color:var(--danger);}
+.thumb-card.deleted .del-overlay{display:flex;}
+.thumb-card.inserted{border-color:var(--success);}
+.thumb-card.dragging-card{opacity:.3;transform:scale(.95);}
+.thumb-img-wrap{position:relative;background:#f0f0f0;aspect-ratio:.707;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.thumb-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s;}
+.del-overlay{display:none;position:absolute;inset:0;background:rgba(224,49,49,.15);align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--danger);}
+.thumb-shimmer{width:100%;height:100%;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.rotate-badge{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border-radius:4px;padding:2px 5px;font-size:10px;font-weight:700;display:none;}
+.rotate-badge.visible{display:block;}
+.check-badge{position:absolute;top:4px;left:4px;width:18px;height:18px;background:var(--accent);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:900;}
+.thumb-card.selected .check-badge{display:flex;}
+.multi-badge{position:absolute;top:4px;left:4px;min-width:20px;height:20px;background:var(--accent);border-radius:10px;display:none;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:900;padding:0 5px;}
+.thumb-footer{padding:7px 8px;display:flex;align-items:center;justify-content:space-between;gap:4px;border-top:1px solid var(--border);}
+.page-label{font-size:12px;font-weight:600;color:var(--text-secondary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.thumb-actions{display:flex;gap:3px;flex-shrink:0;}
+.btn-icon{width:24px;height:24px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-secondary);transition:all .12s;}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light);}
+.btn-icon.danger:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-light);}
+/* Insert zone */
+.insert-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);margin-top:12px;}
+.insert-zone:hover,.insert-zone.drag-over{border-color:var(--success);background:var(--success-light);}
+.insert-zone p{font-size:13px;color:var(--text-secondary);}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .12s;font-family:var(--font);}
+.btn-secondary{background:var(--surface);color:var(--text-primary);border:1px solid var(--border);}.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--danger-light);color:var(--danger);border:1px solid #ffc9c9;}.btn-danger:hover{background:#ffe3e3;}
+.btn-success{background:var(--accent);color:#fff;}.btn-success:hover{background:var(--accent-hover);}.btn-success:disabled{opacity:.4;cursor:not-allowed;}
+.btn-full{width:100%;justify-content:center;}
+/* Side */
+label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;}
+input[type="text"]{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--font);outline:none;transition:border-color .12s;}
+input[type="text"]:focus{border-color:var(--accent);}
+.summary-list{display:flex;flex-direction:column;gap:6px;}
+.summary-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:13px;}
+.summary-item .key{color:var(--text-secondary);}
+.summary-item .val{font-weight:700;font-family:var(--font-mono);}
+.val.red{color:var(--danger);}.val.green{color:var(--success);}.val.blue{color:var(--accent);}
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.chip{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;background:var(--bg);border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:all .12s;}
+.chip:hover{border-color:var(--accent);color:var(--accent);}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.processing{display:none;text-align:center;padding:20px;}.processing.active{display:block;}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast{position:fixed;bottom:28px;right:28px;background:var(--text-primary);color:#fff;padding:11px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow-md);opacity:0;transform:translateY(8px);transition:all .2s;z-index:999;pointer-events:none;}
+#toast.show{opacity:1;transform:translateY(0);}
+#toast.success{background:var(--success);}#toast.error{background:var(--danger);}
+#thumbLoadingBar{height:3px;background:var(--accent-light);position:relative;border-radius:2px;margin:12px 0 0;display:none;}
+#thumbLoadingBar.active{display:block;}
+#thumbLoadingBar::after{content:'';position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;animation:loadbar 1.5s ease-in-out infinite;}
+@keyframes loadbar{0%{width:0%;left:0}50%{width:70%;left:15%}100%{width:0%;left:100%}}
+@media(max-width:720px){.app{grid-template-columns:1fr;}.side-col{order:-1;}}
+
+/* ── DBLess 네비게이션 ── */
+/* ── DBLess 페이지 헤더 ── */
+</style>
+</head>
+<body>
+<nav class="db-nav">
+  <a class="db-nav-logo" href="/"><em>DB</em>Less</a>
+  <div class="db-nav-links">
+    <a href="공문생성기.html">공문생성기</a>
+    <a href="멀티메일.html">대량메일발송</a>
+    <a href="pdf편집기.html" class="active">PDF편집기</a>
+    <a href="누끼따기.html">누끼따기</a>
+    <a href="timer.html">타이머</a>
+  </div>
+</nav>
+<header class="db-page-header">
+  <p class="db-page-eyebrow">03 / PDF편집기</p>
+  <h1 class="db-page-title">PDF 편집기</h1>
+  <p class="db-page-desc">썸네일 · 회전 · 추출 · 삭제 · 순서변경 · 삽입 · 브라우저에서 바로 처리</p>
+</header>
+
+<div class="app">
+  <div class="main-col">
+    <!-- 업로드 -->
+    <div class="section" id="uploadSection">
+      <div class="section-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> PDF 불러오기</div>
+      <div class="upload-zone" id="uploadZone">
+        <svg width="32" height="32" viewBox="0 0 28 36" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px"><path d="M4 2 L18 2 L24 8 L24 34 L4 34 Z"/><path d="M18 2 L18 8 L24 8"/><line x1="8" y1="16" x2="20" y2="16"/><line x1="8" y1="21" x2="20" y2="21"/></svg>
+        <h3>PDF 파일을 드래그하거나 클릭해서 업로드</h3>
+        <p>편집할 PDF 파일을 선택해 주세요</p>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf">
+    </div>
+
+    <!-- 에디터 -->
+    <div class="section" id="editorSection" style="display:none">
+      <div class="file-info" id="fileInfo">
+        <div class="file-icon"><svg width="16" height="16" viewBox="0 0 28 36" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2 L18 2 L24 8 L24 34 L4 34 Z"/><path d="M18 2 L18 8 L24 8"/></svg></div>
+        <div>
+          <div class="file-name" id="fileName">—</div>
+          <div class="file-meta" id="fileMeta">—</div>
+        </div>
+        <button class="btn-reset" id="resetBtn">✕ 초기화</button>
+      </div>
+
+      <!-- sticky toolbar -->
+      <div class="toolbar">
+        <button class="btn btn-secondary" id="selectAllBtn">☑ 전체선택</button>
+        <button class="btn btn-secondary" id="deselectBtn">☐ 선택해제</button>
+        <button class="btn btn-secondary" id="rotateCWBtn">↻ 우회전</button>
+        <button class="btn btn-secondary" id="rotateCCWBtn">↺ 좌회전</button>
+        <button class="btn btn-danger" id="deleteSelectedBtn">🗑 선택삭제</button>
+        <button class="btn btn-secondary" id="restoreAllBtn">↺ 삭제복원</button>
+      </div>
+
+      <div id="thumbLoadingBar"></div>
+      <div class="grid-wrapper">
+        <div class="thumb-grid" id="thumbGrid"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title" style="margin-bottom:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 다른 PDF 삽입</div>
+      <div class="insert-zone" id="insertZone">
+        <p>📎 클릭하거나 PDF를 여기에 드래그&amp;드롭 (여러 파일 동시 선택 가능)<br>
+        <small style="color:var(--text-muted)">선택된 마지막 페이지 뒤에 삽입 · 미선택 시 맨 뒤 · 삽입 후 카드 드래그로 위치 조정</small></p>
+      </div>
+      <input type="file" id="insertInput" accept=".pdf" multiple>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="section">
+      <div class="section-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg> 페이지 추출</div>
+      <div style="margin-bottom:10px">
+        <label>추출할 페이지 번호</label>
+        <input type="text" id="extractInput" placeholder="예: 1,3,5-7,10">
+        <div class="chip-row" id="quickChips"></div>
+      </div>
+      <button class="btn btn-secondary btn-full" id="extractBtn" disabled>선택 페이지만 추출</button>
+    </div>
+    <div class="section">
+      <div class="section-title">📊 변경 요약</div>
+      <div class="summary-list">
+        <div class="summary-item"><span class="key">원본 페이지</span><span class="val blue" id="sumOriginal">—</span></div>
+        <div class="summary-item"><span class="key">삭제 예정</span><span class="val red" id="sumDeleted">—</span></div>
+        <div class="summary-item"><span class="key">삽입 페이지</span><span class="val green" id="sumInserted">—</span></div>
+        <div class="summary-item"><span class="key">최종 페이지 수</span><span class="val blue" id="sumFinal">—</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 저장</div>
+      <div class="processing" id="processing"><div class="spinner"></div><p style="font-size:13px;color:var(--text-secondary)">PDF 생성 중…</p></div>
+      <div id="saveControls">
+        <div style="margin-bottom:10px"><label>저장 파일명</label><input type="text" id="outputName" placeholder="edited_output.pdf"></div>
+        <button class="btn btn-success btn-full" id="saveBtn" disabled>수정된 PDF 저장</button>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center;line-height:1.5">삭제된 페이지 제외 · 현재 순서대로 저장</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let mainFileB64=null, mainFileName='', totalPages=0;
+let pageOrder=[];
+let insertFiles={};
+let insertCounter=0, uidCounter=0;
+let dragSrcIndices=[];   // 드래그 중인 카드 인덱스 목록
+let dropTargetIdx=null;  // 드롭 대상 위치
+
+const uploadZone=document.getElementById('uploadZone');
+const fileInput=document.getElementById('fileInput');
+const insertZone=document.getElementById('insertZone');
+const insertInput=document.getElementById('insertInput');
+const saveBtn=document.getElementById('saveBtn');
+const extractBtn=document.getElementById('extractBtn');
+const extractInput=document.getElementById('extractInput');
+const outputName=document.getElementById('outputName');
+const processing=document.getElementById('processing');
+const saveControls=document.getElementById('saveControls');
+const thumbGrid=document.getElementById('thumbGrid');
+const loadingBar=document.getElementById('thumbLoadingBar');
+
+// ── Upload ─────────────────────────────────────────────────────────────────
+uploadZone.addEventListener('click',()=>fileInput.click());
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('drag-over');});
+uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop',e=>{
+  e.preventDefault();uploadZone.classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type==='application/pdf') loadMainFile(f);
+  else showToast('PDF 파일만 지원합니다','error');
+});
+fileInput.addEventListener('change',e=>{if(e.target.files[0])loadMainFile(e.target.files[0]);});
+
+async function loadMainFile(file){
+  const b64=await fileToB64(file);
+  mainFileB64=b64; mainFileName=file.name;
+  const info=await callPython({action:'get_info',pdf:b64});
+  if(!info)return;
+  totalPages=info.pages;
+  pageOrder=Array.from({length:totalPages},(_,i)=>({
+    type:'main',idx:i,deleted:false,_selected:false,
+    rotation:0,label:`${i+1}페이지`,thumbB64:null,_uid:++uidCounter
+  }));
+  document.getElementById('fileName').textContent=file.name;
+  document.getElementById('fileMeta').textContent=`${totalPages}페이지`;
+  outputName.value=file.name.replace('.pdf','')+'_edited.pdf';
+  document.getElementById('editorSection').style.display='';
+  document.getElementById('uploadSection').style.display='none';
+  renderGrid(); updateSummary(); buildQuickChips();
+  saveBtn.disabled=false; extractBtn.disabled=false;
+  showToast(`${totalPages}페이지 불러왔습니다 ✓`,'success');
+  loadThumbnails(b64,'main');
+}
+
+// ── Thumbnails ─────────────────────────────────────────────────────────────
+async function loadThumbnails(b64,scope,insertKey){
+  loadingBar.classList.add('active');
+  const result=await callPython({action:'get_thumbs',pdf:b64});
+  loadingBar.classList.remove('active');
+  if(!result||!result.thumbs||!result.thumbs.length){
+    if(result&&result.error) showToast('썸네일 오류: '+result.error,'error');
+    return;
+  }
+  result.thumbs.forEach((tb64,i)=>{
+    let item=scope==='main'
+      ? pageOrder.find(p=>p.type==='main'&&p.idx===i)
+      : pageOrder.find(p=>p.type==='insert'&&p.insertKey===insertKey&&p.idx===i);
+    if(item){item.thumbB64=tb64; refreshThumbImg(item);}
+  });
+}
+
+function refreshThumbImg(item){
+  const card=thumbGrid.querySelector(`[data-uid="${item._uid}"]`);
+  if(!card)return;
+  const wrap=card.querySelector('.thumb-img-wrap');
+  const shimmer=wrap.querySelector('.thumb-shimmer');
+  if(shimmer)shimmer.remove();
+  let img=wrap.querySelector('img');
+  if(!img){img=document.createElement('img');wrap.insertBefore(img,wrap.firstChild);}
+  img.src=`data:image/jpeg;base64,${item.thumbB64}`;
+  img.style.transform=`rotate(${item.rotation}deg)`;
+  const rb=card.querySelector('.rotate-badge');
+  if(rb){rb.textContent=item.rotation+'°';rb.classList.toggle('visible',item.rotation!==0);}
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderGrid(){
+  thumbGrid.innerHTML='';
+  pageOrder.forEach((item,i)=>{
+    if(!item._uid)item._uid=++uidCounter;
+    const card=document.createElement('div');
+    card.className='thumb-card'
+      +(item._selected?' selected':'')
+      +(item.deleted?' deleted':'')
+      +(item.type==='insert'?' inserted':'');
+    card.dataset.uid=item._uid;
+    card.dataset.i=String(i);
+    card.draggable=true;
+
+    card.innerHTML=`
+      <div class="thumb-img-wrap">
+        ${item.thumbB64
+          ?`<img src="data:image/jpeg;base64,${item.thumbB64}" style="transform:rotate(${item.rotation}deg)">`
+          :'<div class="thumb-shimmer"></div>'}
+        <div class="del-overlay">삭제</div>
+        <div class="rotate-badge ${item.rotation!==0?'visible':''}">${item.rotation}°</div>
+        <div class="check-badge">✓</div>
+      </div>
+      <div class="thumb-footer">
+        <div class="page-label" title="${item.label}">${item.label}${item.type==='insert'?' 📎':''}</div>
+        <div class="thumb-actions">
+          <button class="btn-icon" data-action="ccw" title="좌회전">↺</button>
+          <button class="btn-icon" data-action="cw"  title="우회전">↻</button>
+          <button class="btn-icon danger" data-action="toggle-del">${item.deleted?'↩':'🗑'}</button>
+        </div>
+      </div>`;
+
+    card.addEventListener('click',e=>{
+      if(e.target.closest('.btn-icon'))return;
+      pageOrder[i]._selected=!pageOrder[i]._selected;
+      renderGrid(); updateSummary();
+    });
+    card.querySelectorAll('.btn-icon').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const a=btn.dataset.action;
+        if(a==='cw')  pageOrder[i].rotation=(pageOrder[i].rotation+90)%360;
+        if(a==='ccw') pageOrder[i].rotation=(pageOrder[i].rotation+270)%360;
+        if(a==='toggle-del') pageOrder[i].deleted=!pageOrder[i].deleted;
+        renderGrid(); updateSummary();
+      });
+    });
+
+    // ── 카드 드래그 이벤트 ──
+    card.addEventListener('dragstart',e=>{
+      // 선택 안된 카드 드래그 시 → 해당 카드만 단독으로
+      if(!item._selected){
+        pageOrder.forEach(p=>p._selected=false);
+        pageOrder[i]._selected=true;
+        // 선택 시각 반영 (DOM 재생성 없이)
+        thumbGrid.querySelectorAll('.thumb-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        card.querySelector('.check-badge').style.display='flex';
+      }
+      dragSrcIndices=pageOrder.map((p,idx)=>p._selected?idx:-1).filter(x=>x>=0);
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('application/x-pdf-card','1');
+      card.classList.add('dragging-card');
+    });
+
+    card.addEventListener('dragend',()=>{
+      card.classList.remove('dragging-card');
+      thumbGrid.querySelectorAll('.thumb-card').forEach(c=>c.classList.remove('drag-target-before'));
+    });
+
+    // dragover on card → 이 카드 앞에 드롭 표시
+    card.addEventListener('dragover',e=>{
+      if(!e.dataTransfer.types.includes('application/x-pdf-card'))return;
+      e.preventDefault();
+      thumbGrid.querySelectorAll('.thumb-card').forEach(c=>c.classList.remove('drag-target-before'));
+      // 선택된 카드 위에 hover하면 highlight 안함
+      if(!item._selected) card.classList.add('drag-target-before');
+      dropTargetIdx=i;
+    });
+    card.addEventListener('dragleave',()=>{
+      card.classList.remove('drag-target-before');
+    });
+    card.addEventListener('drop',e=>{
+      if(!e.dataTransfer.types.includes('application/x-pdf-card'))return;
+      e.preventDefault();
+      card.classList.remove('drag-target-before');
+      executeDrop(i);
+    });
+
+    thumbGrid.appendChild(card);
+  });
+
+  // 그리드 자체에도 drop 이벤트 (마지막 위치)
+  thumbGrid.addEventListener('dragover',e=>{
+    if(!e.dataTransfer.types.includes('application/x-pdf-card'))return;
+    e.preventDefault();
+  });
+  thumbGrid.addEventListener('drop',e=>{
+    if(!e.dataTransfer.types.includes('application/x-pdf-card'))return;
+    e.preventDefault();
+    // 카드 위에서 drop 됐으면 이미 처리됨 — 여기선 맨 뒤로
+    executeDrop(pageOrder.length);
+  });
+}
+
+// ── 드롭 실행: 선택된 카드들을 targetIdx 위치 앞으로 이동 ─────────────────
+function executeDrop(targetIdx){
+  thumbGrid.querySelectorAll('.thumb-card').forEach(c=>c.classList.remove('drag-target-before'));
+  if(dragSrcIndices.length===0)return;
+
+  const selected=[];
+  const rest=[];
+  let nSelectedBeforeTarget=0;
+
+  pageOrder.forEach((item,i)=>{
+    if(item._selected){
+      selected.push(item);
+      if(i<targetIdx)nSelectedBeforeTarget++;
+    } else {
+      rest.push(item);
+    }
+  });
+
+  if(selected.length===0)return;
+
+  const adjustedTarget=targetIdx-nSelectedBeforeTarget;
+  const insertAt=Math.max(0,Math.min(adjustedTarget,rest.length));
+  rest.splice(insertAt,0,...selected);
+
+  pageOrder.length=0;
+  rest.forEach(x=>pageOrder.push(x));
+  dragSrcIndices=[];
+
+  renderGrid(); updateSummary();
+  showToast(`${selected.length}페이지 이동 완료`,'success');
+}
+
+// ── Insert (여러 파일) ──────────────────────────────────────────────────────
+insertZone.addEventListener('click',()=>insertInput.click());
+insertZone.addEventListener('dragover',e=>{
+  if(e.dataTransfer.types.includes('application/x-pdf-card'))return;
+  e.preventDefault();e.stopPropagation();
+  insertZone.classList.add('drag-over');
+});
+insertZone.addEventListener('dragleave',e=>{
+  if(!insertZone.contains(e.relatedTarget)) insertZone.classList.remove('drag-over');
+});
+insertZone.addEventListener('drop',e=>{
+  if(e.dataTransfer.types.includes('application/x-pdf-card'))return;
+  e.preventDefault();e.stopPropagation();
+  insertZone.classList.remove('drag-over');
+  const files=[...e.dataTransfer.files].filter(f=>f.type==='application/pdf');
+  if(!files.length){showToast('PDF 파일만 삽입 가능합니다','error');return;}
+  files.forEach(f=>loadInsertFile(f));
+});
+insertInput.addEventListener('change',e=>{
+  [...e.target.files].forEach(f=>loadInsertFile(f));
+  insertInput.value='';
+});
+
+async function loadInsertFile(file){
+  const b64=await fileToB64(file);
+  const info=await callPython({action:'get_info',pdf:b64});
+  if(!info)return;
+  const key='ins_'+(++insertCounter);
+  insertFiles[key]={b64,name:file.name,pages:info.pages};
+  const selectedIdx=pageOrder.reduce((last,p,i)=>p._selected?i:last,-1);
+  const insertPos=selectedIdx>=0?selectedIdx+1:pageOrder.length;
+  const newItems=Array.from({length:info.pages},(_,i)=>({
+    type:'insert',idx:i,deleted:false,_selected:false,
+    rotation:0,insertKey:key,
+    label:`${file.name} — ${i+1}p`,thumbB64:null,_uid:++uidCounter
+  }));
+  pageOrder.splice(insertPos,0,...newItems);
+  renderGrid(); updateSummary();
+  showToast(`${file.name} (${info.pages}p) 삽입 ✓`,'success');
+  loadThumbnails(b64,'insert',key);
+}
+
+// ── Toolbar ────────────────────────────────────────────────────────────────
+document.getElementById('selectAllBtn').addEventListener('click',()=>{pageOrder.forEach(p=>p._selected=true);renderGrid();updateSummary();});
+document.getElementById('deselectBtn').addEventListener('click',()=>{pageOrder.forEach(p=>p._selected=false);renderGrid();updateSummary();});
+document.getElementById('deleteSelectedBtn').addEventListener('click',()=>{
+  const n=pageOrder.filter(p=>p._selected&&!p.deleted).length;
+  pageOrder.filter(p=>p._selected).forEach(p=>{p.deleted=true;p._selected=false;});
+  renderGrid();updateSummary();if(n)showToast(`${n}페이지 삭제 표시됨`,'error');
+});
+document.getElementById('restoreAllBtn').addEventListener('click',()=>{pageOrder.forEach(p=>p.deleted=false);renderGrid();updateSummary();showToast('모든 삭제 복원됨 ↺');});
+document.getElementById('rotateCWBtn').addEventListener('click',()=>{
+  const sel=pageOrder.filter(p=>p._selected);
+  if(!sel.length){showToast('페이지를 먼저 선택하세요','error');return;}
+  sel.forEach(p=>p.rotation=(p.rotation+90)%360);
+  renderGrid();showToast(`${sel.length}페이지 우회전 ↻`);
+});
+document.getElementById('rotateCCWBtn').addEventListener('click',()=>{
+  const sel=pageOrder.filter(p=>p._selected);
+  if(!sel.length){showToast('페이지를 먼저 선택하세요','error');return;}
+  sel.forEach(p=>p.rotation=(p.rotation+270)%360);
+  renderGrid();showToast(`${sel.length}페이지 좌회전 ↺`);
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  mainFileB64=null;mainFileName='';totalPages=0;pageOrder=[];insertFiles={};
+  document.getElementById('editorSection').style.display='none';
+  document.getElementById('uploadSection').style.display='';
+  fileInput.value='';showToast('초기화됨');
+});
+
+// ── Summary ────────────────────────────────────────────────────────────────
+function updateSummary(){
+  document.getElementById('sumOriginal').textContent=pageOrder.filter(p=>p.type==='main').length||'—';
+  document.getElementById('sumDeleted').textContent=pageOrder.filter(p=>p.deleted).length||'—';
+  document.getElementById('sumInserted').textContent=pageOrder.filter(p=>p.type==='insert'&&!p.deleted).length||'—';
+  document.getElementById('sumFinal').textContent=pageOrder.filter(p=>!p.deleted).length||'—';
+}
+
+// ── Quick chips ────────────────────────────────────────────────────────────
+function buildQuickChips(){
+  const c=document.getElementById('quickChips');c.innerHTML='';
+  [{label:'앞 절반',val:()=>`1-${Math.ceil(totalPages/2)}`},
+   {label:'뒤 절반',val:()=>`${Math.ceil(totalPages/2)+1}-${totalPages}`},
+   {label:'홀수만', val:()=>Array.from({length:totalPages},(_,i)=>i+1).filter(n=>n%2===1).join(',')},
+   {label:'짝수만', val:()=>Array.from({length:totalPages},(_,i)=>i+1).filter(n=>n%2===0).join(',')},
+   {label:'전체',   val:()=>`1-${totalPages}`},
+  ].forEach(p=>{
+    const chip=document.createElement('div');
+    chip.className='chip';chip.textContent=p.label;
+    chip.addEventListener('click',()=>{
+      extractInput.value=p.val();
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+    c.appendChild(chip);
+  });
+}
+
+// ── Extract ────────────────────────────────────────────────────────────────
+extractBtn.addEventListener('click',async()=>{
+  const raw=extractInput.value.trim();
+  if(!raw){showToast('페이지 번호를 입력하세요','error');return;}
+  const indices=parsePageRange(raw,totalPages);
+  if(!indices.length){showToast('유효한 페이지 번호가 없습니다','error');return;}
+  showProcessing(true);
+  const result=await callPython({action:'extract',pdf:mainFileB64,indices});
+  showProcessing(false);
+  if(!result)return;
+  downloadPdf(result.pdf,mainFileName.replace('.pdf','')+'_extract_'+raw.replace(/[,\s]/g,'_')+'.pdf');
+  showToast(`${indices.length}페이지 추출 완료 ✓`,'success');
+});
+function parsePageRange(str,max){
+  const s=new Set();
+  str.split(',').forEach(p=>{
+    p=p.trim();
+    if(p.includes('-')){const[a,b]=p.split('-').map(Number);for(let i=a;i<=b;i++)if(i>=1&&i<=max)s.add(i-1);}
+    else{const n=parseInt(p);if(n>=1&&n<=max)s.add(n-1);}
+  });
+  return[...s].sort((a,b)=>a-b);
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────
+saveBtn.addEventListener('click',async()=>{
+  if(!mainFileB64)return;
+  const inserts=Object.fromEntries(Object.entries(insertFiles).map(([k,v])=>[k,v.b64]));
+  showProcessing(true);
+  const result=await callPython({action:'build',pdf:mainFileB64,inserts,order:pageOrder});
+  showProcessing(false);
+  if(!result)return;
+  const fname=(outputName.value.trim()||'edited.pdf').replace(/\.pdf$/i,'')+'.pdf';
+  downloadPdf(result.pdf,fname);
+  showToast(`저장 완료 ✓ — ${fname}`,'success');
+});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+async function callPython(payload){
+  try{
+    const action=payload.action;
+    if(action==='get_info')  return await localGetInfo(payload);
+    if(action==='get_thumbs')return await localGetThumbs(payload);
+    if(action==='build')     return await localBuild(payload);
+    if(action==='extract')   return await localExtract(payload);
+    throw new Error('Unknown action: '+action);
+  }catch(err){console.error(err);showToast('오류: '+err.message,'error');return null;}
+}
+async function b64ToBytes(b64){
+  const bin=atob(b64);const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return arr;
+}
+function bytesToB64(bytes){
+  let bin='';const chunk=8192;
+  for(let i=0;i<bytes.length;i+=chunk)bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  return btoa(bin);
+}
+async function localGetInfo(p){
+  const bytes=await b64ToBytes(p.pdf);
+  const doc=await PDFLib.PDFDocument.load(bytes,{ignoreEncryption:true});
+  return {pages:doc.getPageCount()};
+}
+async function localGetThumbs(p){
+  const bytes=await b64ToBytes(p.pdf);
+  if(typeof pdfjsLib==='undefined') return {thumbs:[]};
+  try{
+    const pdfDoc=await pdfjsLib.getDocument({data:bytes}).promise;
+    const thumbs=[];
+    for(let i=1;i<=pdfDoc.numPages;i++){
+      const page=await pdfDoc.getPage(i);
+      const vp=page.getViewport({scale:0.4});
+      const canvas=document.createElement('canvas');
+      canvas.width=vp.width;canvas.height=vp.height;
+      await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+      thumbs.push(canvas.toDataURL('image/jpeg',0.75).split(',')[1]);
+    }
+    return {thumbs};
+  }catch(e){return {thumbs:[],error:e.message};}
+}
+async function localBuild(p){
+  const mainBytes=await b64ToBytes(p.pdf);
+  const mainDoc=await PDFLib.PDFDocument.load(mainBytes,{ignoreEncryption:true});
+  const insertDocs={};
+  for(const[key,b64] of Object.entries(p.inserts||{})){
+    insertDocs[key]=await PDFLib.PDFDocument.load(await b64ToBytes(b64),{ignoreEncryption:true});
+  }
+  const newDoc=await PDFLib.PDFDocument.create();
+  for(const item of (p.order||[])){
+    if(item.deleted) continue;
+    let srcDoc=null,idx=item.idx;
+    if(item.type==='main') srcDoc=mainDoc;
+    else if(item.type==='insert'&&insertDocs[item.insertKey]) srcDoc=insertDocs[item.insertKey];
+    if(!srcDoc||idx<0||idx>=srcDoc.getPageCount()) continue;
+    const[copied]=await newDoc.copyPages(srcDoc,[idx]);
+    const rot=item.rotation||0;
+    if(rot) copied.setRotation(PDFLib.degrees((copied.getRotation().angle+rot)%360));
+    newDoc.addPage(copied);
+  }
+  return {pdf:bytesToB64(await newDoc.save())};
+}
+async function localExtract(p){
+  const src=await PDFLib.PDFDocument.load(await b64ToBytes(p.pdf),{ignoreEncryption:true});
+  const newDoc=await PDFLib.PDFDocument.create();
+  const valid=(p.indices||[]).filter(i=>i>=0&&i<src.getPageCount());
+  const copied=await newDoc.copyPages(src,valid);
+  copied.forEach(pg=>newDoc.addPage(pg));
+  return {pdf:bytesToB64(await newDoc.save())};
+}
+function fileToB64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('파일 읽기 실패'));
+    r.readAsDataURL(file);
+  });
+}
+function downloadPdf(b64,filename){
+  const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+  Object.assign(document.createElement('a'),{href:url,download:filename}).click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function showProcessing(show){processing.classList.toggle('active',show);saveControls.style.display=show?'none':'';}
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show'+(type?' '+type:'');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',2800);
+}
+</script>
+<script>
+// pdf.js worker
+(function(){
+  function initWorker(){
+    if(typeof pdfjsLib!=='undefined')
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initWorker);
+  else initWorker();
+})();
+</script>
+</body>
+</html>
