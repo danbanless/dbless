@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>명찰생성기 — DBLess</title>
+<link rel="stylesheet" href="dbless-common.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="db-nav">
+  <a class="db-nav-logo" href="index.html"><em>DB</em>Less</a>
+  <div class="db-nav-links">
+    <a href="공문생성기.html">공문생성기</a>
+    <a href="멀티메일.html">대량메일발송</a>
+    <a href="pdf편집기.html">PDF편집기</a>
+    <a href="누끼따기.html">누끼따기</a>
+    <a href="timer.html">타이머</a>
+    <a href="명찰생성기.html" class="active">명찰생성기</a>
+  </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<header class="db-page-header">
+  <p class="db-page-eyebrow">06 / 명찰생성기</p>
+  <h1 class="db-page-title">명찰 생성기</h1>
+  <p class="db-page-desc">엑셀 명단과 템플릿 하나로 명찰을 A4에 자동 배치해 pptx로 출력합니다. 설치 없이 exe 하나로 실행.</p>
+</header>
+
+<div class="db-wrap">
+
+  <!-- 다운로드 -->
+  <div class="db-dl-block">
+    <div class="db-dl-info">
+      <h2>실행 파일 다운로드</h2>
+      <p>exe 파일 하나를 받아 더블클릭하면 바로 실행됩니다.<br>별도 설치, Python 없이도 동작합니다.</p>
+      <div class="db-dl-meta">Windows 전용 · 단일 EXE · 인터넷 연결 불필요</div>
+    </div>
+    <a href="https://github.com/danbanless/dbless/raw/main/명찰생성기.7z" class="db-btn" download>다운로드 (.7z)</a>
+  </div>
+
+  <!-- 요구사항 -->
+  <div class="db-req-box">
+    <h3>실행 환경 요구사항</h3>
+    <ul class="db-req-list">
+      <li>Windows 10 이상</li>
+      <li>Microsoft PowerPoint (출력 확인용 — 생성 자체는 불필요)</li>
+      <li>명단 파일: xlsx 형식, 1행 헤더 + 2행부터 데이터</li>
+    </ul>
+  </div>
+
+  <!-- 파일 구성 -->
+  <p class="db-section-title">파일 구성</p>
+  <div class="db-file-tree">
+    <span class="folder">원하는 폴더/</span><br>
+    &nbsp;&nbsp;└── <span class="file">명찰생성기.exe</span>&nbsp;&nbsp;&nbsp;<span style="color:#666">← 이것 하나만</span>
+  </div>
+
+  <!-- 주요 기능 -->
+  <p class="db-section-title">주요 기능</p>
+  <div class="db-feature-grid">
+    <div class="db-feature-item">
+      <h4>템플릿 자동 생성</h4>
+      <p>크기를 입력하면 {{이름}} 등 플레이스홀더가 들어간 pptx 템플릿을 바로 만들어줍니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>A4 자동 배치</h4>
+      <p>여백·간격을 입력하면 A4 한 장에 몇 개 들어가는지 즉시 계산해 미리보기로 보여줍니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>가로형 자동 전환</h4>
+      <p>명찰 가로 크기가 A4 세로 용지를 초과하면 가로형 A4로 자동 전환합니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>재단선 커스터마이즈</h4>
+      <p>재단선 색상·두께·선 종류(실선·점선·파선 등)를 자유롭게 설정합니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>이미지·디자인 유지</h4>
+      <p>템플릿에 넣은 배경 이미지, 로고가 각 명찰에 그대로 복사됩니다.</p>
+    </div>
+    <div class="db-feature-item">
+      <h4>컬럼명 = 플레이스홀더</h4>
+      <p>엑셀 헤더 이름이 곧 {{컬럼명}}으로 사용됩니다. 컬럼 수·명칭 제한 없음.</p>
+    </div>
+  </div>
+
+  <!-- 사용 방법 -->
+  <p class="db-section-title">사용 방법</p>
+  <div class="db-step-list">
+    <div class="db-step">
+      <span class="db-step-num">01</span>
+      <div class="db-step-body">
+        <h4>탭① — 템플릿 생성</h4>
+        <p>명찰 크기(mm)를 입력하고 [템플릿 생성 및 저장]을 누릅니다.<br>
+        저장된 <code>template_90x60.pptx</code>를 PowerPoint에서 열어 디자인을 편집합니다.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">02</span>
+      <div class="db-step-body">
+        <h4>템플릿 편집 (PowerPoint)</h4>
+        <p>플레이스홀더 위치·폰트·크기 조정, 배경 이미지·로고 삽입 후 저장합니다.<br>
+        플레이스홀더는 반드시 <code>{{이름}}</code> 처럼 중괄호 두 겹으로 작성하세요.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">03</span>
+      <div class="db-step-body">
+        <h4>탭② — 파일 선택</h4>
+        <p>편집한 <code>template.pptx</code>와 명단 <code>data.xlsx</code>를 각각 불러옵니다.<br>
+        xlsx 1행은 헤더(컬럼명), 2행부터 실제 데이터입니다.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">04</span>
+      <div class="db-step-body">
+        <h4>레이아웃 설정</h4>
+        <p>A4 여백(상·하·좌·우)과 명찰 간격을 mm 단위로 입력합니다.<br>
+        우측 미리보기 캔버스에서 배치가 실시간으로 확인됩니다.</p>
+      </div>
+    </div>
+    <div class="db-step">
+      <span class="db-step-num">05</span>
+      <div class="db-step-body">
+        <h4>명찰 생성</h4>
+        <p>출력 파일명을 입력하고 [명찰 생성]을 누릅니다.<br>
+        <code>output/파일명.pptx</code>가 exe와 같은 폴더에 생성됩니다. PowerPoint에서 열어 인쇄하세요.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주의사항 -->
+  <div class="db-warn-box">
+    <strong>주의사항</strong>
+    <p>
+      템플릿 내 이미지는 그룹화(Ctrl+G)하지 마세요. 겹치는 것은 괜찮습니다.<br>
+      명찰 크기가 A4(최대 297×210mm)를 초과하면 생성이 차단됩니다.<br>
+      재단 시 명찰이 지정 치수보다 크게 잘리지 않도록 재단선 안쪽으로 칼을 대세요.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>
