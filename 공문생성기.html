@@ -853,6 +853,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 </div><!-- /layout -->
 
 <script>
+// ══ PDF 페이지 분할: 글줄 사이 빈 행에서 자르기 ══
+function findSafeCutPx(canvas, targetPx, searchPx) {
+  const ctx = canvas.getContext('2d');
+  const top = Math.max(0, targetPx - searchPx);
+  const data = ctx.getImageData(0, top, canvas.width, searchPx).data;
+  for (let row = searchPx - 1; row >= 0; row--) {
+    let white = true;
+    for (let col = 0; col < canvas.width; col += 6) {
+      const i = (row * canvas.width + col) * 4;
+      if (data[i] < 248 || data[i+1] < 248 || data[i+2] < 248) { white = false; break; }
+    }
+    if (white) return top + row;
+  }
+  return targetPx; // 흰 행 없으면 원래 위치
+}
+
 // ══ 명단 textarea: Tab 키 → 탭 문자 삽입 ══
 document.addEventListener('DOMContentLoaded', () => {
   const ta = document.getElementById('rosterInput');
@@ -1794,19 +1810,25 @@ async function generateSplitZIP(){
           height: imgH,
         });
       } else {
-        // 명단이 한 페이지보다 길면 분할
+        // 명단이 한 페이지보다 길면 분할 (글줄 사이에서 자르기)
         let remaining = imgH, srcY = 0;
         const pxPerPt = canvas.width / contentW;
+        const searchPt = 40;
         while(remaining > 0.5){
-          const sliceH = Math.min(maxH, remaining);
-          // 슬라이스 캔버스 생성
+          const idealCutPt = Math.min(maxH, remaining);
+          const idealCutPx = Math.round((srcY + idealCutPt) * pxPerPt);
+          const safeCutPx = remaining > maxH
+            ? findSafeCutPx(canvas, idealCutPx, Math.round(searchPt * pxPerPt))
+            : idealCutPx;
+          const sliceHpx = safeCutPx - Math.round(srcY * pxPerPt);
+          const sliceH = sliceHpx / pxPerPt;
           const sc = document.createElement('canvas');
           sc.width = canvas.width;
-          sc.height = Math.round(sliceH * pxPerPt);
+          sc.height = sliceHpx;
           const sctx = sc.getContext('2d');
           sctx.fillStyle = '#fff';
           sctx.fillRect(0, 0, sc.width, sc.height);
-          sctx.drawImage(canvas, 0, Math.round(srcY*pxPerPt), canvas.width, sc.height, 0, 0, canvas.width, sc.height);
+          sctx.drawImage(canvas, 0, Math.round(srcY*pxPerPt), canvas.width, sliceHpx, 0, 0, canvas.width, sliceHpx);
           const slicePng = await fetch(sc.toDataURL('image/png')).then(r=>r.arrayBuffer());
           const sliceImage = await newDoc.embedPng(slicePng);
           const page = newDoc.addPage([A4_W, A4_H]);
@@ -2185,17 +2207,24 @@ async function generateZIP(){
           const page = newDoc.addPage([A4_W, A4_H]);
           page.drawImage(pngImage, {x:MX_PT, y:A4_H-MT_PT-imgH, width:contentW, height:imgH});
         } else {
-          // 여러 페이지로 분할
+          // 여러 페이지로 분할 (글줄 사이에서 자르기)
           let remaining=imgH, srcY=0;
           const pxPerPt = canvas.width / contentW;
+          const searchPt = 40; // 경계 위쪽 40pt 내에서 흰 행 탐색
           while(remaining>0.5){
-            const sliceH=Math.min(maxH, remaining);
+            const idealCutPt = Math.min(maxH, remaining);
+            const idealCutPx = Math.round((srcY + idealCutPt) * pxPerPt);
+            const safeCutPx = remaining > maxH
+              ? findSafeCutPx(canvas, idealCutPx, Math.round(searchPt * pxPerPt))
+              : idealCutPx;
+            const sliceHpx = safeCutPx - Math.round(srcY * pxPerPt);
+            const sliceH = sliceHpx / pxPerPt;
             const sc=document.createElement('canvas');
             sc.width=canvas.width;
-            sc.height=Math.round(sliceH*pxPerPt);
+            sc.height=sliceHpx;
             const sctx=sc.getContext('2d');
             sctx.fillStyle='#fff'; sctx.fillRect(0,0,sc.width,sc.height);
-            sctx.drawImage(canvas,0,Math.round(srcY*pxPerPt),canvas.width,sc.height,0,0,canvas.width,sc.height);
+            sctx.drawImage(canvas,0,Math.round(srcY*pxPerPt),canvas.width,sliceHpx,0,0,canvas.width,sliceHpx);
             const slicePng = await fetch(sc.toDataURL('image/png')).then(r=>r.arrayBuffer());
             const sliceImage = await newDoc.embedPng(slicePng);
             const page = newDoc.addPage([A4_W, A4_H]);
