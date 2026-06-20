@@ -2032,37 +2032,26 @@ function buildDoc(co,d){
     ?`${d.target} <strong>${totalN}명</strong>`
     :`${active.join(', ')} 임직원 중 희망자 <strong>${totalN}명</strong>`;
   const cols=S.columns;
-  // 명단 33명 단위 페이지 분할
-  const ROSTER_PER_PAGE = 33;
-  function buildRosterDps(roster, cols){
-    // 컬럼별 고정 너비 (table-layout:fixed로 모든 페이지 동일 적용)
-    const colWidths = cols.map(c=>{
+  // 명단: 컬럼 공통 스타일 계산 (generateZIP에서도 동일 사용)
+  function rosterColWidths(cols){
+    return cols.map(c=>{
       if(c.role==='number') return 'width:50px;';
       if(c.role==='company') return 'width:28%;';
-      return ''; // data: 균등 분배
+      return '';
     });
-    const thead=`<thead><tr>${cols.map((c,ci)=>`<th style="${colWidths[ci]}">${c.name}</th>`).join('')}</tr></thead>`;
+  }
+  function buildRosterDp(roster, cols){
+    const cw = rosterColWidths(cols);
+    const thead=`<thead><tr>${cols.map((c,ci)=>`<th style="${cw[ci]}">${c.name}</th>`).join('')}</tr></thead>`;
     const tableOpen=`<table class="dt" style="table-layout:fixed;width:100%;">`;
-    if(!roster.length){
-      const emptyRow=`<tr><td colspan="${cols.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
-      return `<div class="dp" data-page-type="roster"><div class="dat">(첨부) 2. 입과자 명단</div>${tableOpen}${thead}<tbody>${emptyRow}</tbody></table></div>`;
-    }
-    let html='';
-    for(let start=0; start<roster.length; start+=ROSTER_PER_PAGE){
-      const chunk=roster.slice(start, start+ROSTER_PER_PAGE);
-      const title=start===0?'(첨부) 2. 입과자 명단':'(첨부) 2. 입과자 명단(계속)';
-      const chunkRows=chunk.map((r,i)=>{
-        return '<tr>'+cols.map(c=>{
-          let v;
-          if(c.role==='number') v=start+i+1;
-          else v = r._all ? (r._all[c.name]||'') : '';
+    const rows = roster.length
+      ? roster.map((r,i)=>'<tr>'+cols.map(c=>{
+          let v; if(c.role==='number') v=i+1; else v=r._all?(r._all[c.name]||''):'';
           const isLeft=(c.role==='data'&&c.name.indexOf('부서')>=0);
           return `<td${isLeft?' class="tl"':''}>${v}</td>`;
-        }).join('')+'</tr>';
-      }).join('');
-      html+=`<div class="dp" data-page-type="roster"><div class="dat">${title}</div>${tableOpen}${thead}<tbody>${chunkRows}</tbody></table></div>`;
-    }
-    return html;
+        }).join('')+'</tr>').join('')
+      : `<tr><td colspan="${cols.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
+    return `<div class="dp" data-page-type="roster"><div class="dat">(첨부) 2. 입과자 명단</div>${tableOpen}${thead}<tbody>${rows}</tbody></table></div>`;
   }
   const feeDetail=(d.fee&&coRoster.length)
     ?` (${d.fee}만원 × ${coRoster.length}명 = ${(parseInt(d.fee)*coRoster.length).toLocaleString()}원)`:'';
@@ -2100,7 +2089,7 @@ function buildDoc(co,d){
   <div class="dat">(첨부) 1. 과정 시간표</div>
   ${ttSection}
 </div>
-${buildRosterDps(coRoster, cols)}`;
+${buildRosterDp(coRoster, cols)}`;
 }
 
 // ══ 미리보기 ════════════════════════
@@ -2335,37 +2324,83 @@ async function generateZIP(){
           continue;
         }
 
-        // ── 명단 및 기타 페이지: 기본 렌더 ──
-        const canvas = await renderChunk(dp.outerHTML);
-        const pngBytes = await fetch(canvas.toDataURL('image/png')).then(r=>r.arrayBuffer());
-        const pngImage = await newDoc.embedPng(pngBytes);
-        const imgH = canvasPtH(canvas);
-        if(imgH<=maxH){
-          const page = newDoc.addPage([A4_W, A4_H]);
-          page.drawImage(pngImage, {x:MX_PT, y:A4_H-MT_PT-imgH, width:contentW, height:imgH});
-        } else {
-          let remaining=imgH, srcY=0;
-          const pxPerPt = canvas.width / contentW;
-          const searchPt = 40;
-          while(remaining>0.5){
-            const idealCutPt = Math.min(maxH, remaining);
-            const idealCutPx = Math.round((srcY + idealCutPt) * pxPerPt);
-            const safeCutPx = remaining > maxH ? findSafeCutPx(canvas, idealCutPx, Math.round(searchPt * pxPerPt)) : idealCutPx;
-            const sliceHpx = safeCutPx - Math.round(srcY * pxPerPt);
-            const sliceH = sliceHpx / pxPerPt;
-            const sc=document.createElement('canvas');
-            sc.width=canvas.width; sc.height=sliceHpx;
-            const sctx=sc.getContext('2d');
-            sctx.fillStyle='#fff'; sctx.fillRect(0,0,sc.width,sc.height);
-            sctx.drawImage(canvas,0,Math.round(srcY*pxPerPt),canvas.width,sliceHpx,0,0,canvas.width,sliceHpx);
-            const slicePng = await fetch(sc.toDataURL('image/png')).then(r=>r.arrayBuffer());
-            const sliceImage = await newDoc.embedPng(slicePng);
-            const page = newDoc.addPage([A4_W, A4_H]);
-            page.drawImage(sliceImage, {x:MX_PT, y:A4_H-MT_PT-sliceH, width:contentW, height:sliceH});
-            remaining -= sliceH; srcY += sliceH;
+        // ── 명단: 실제 높이 기반 동적 페이지 분할 ──
+        if(isRoster){
+          const coRoster2 = S.roster.filter(r=>r.co===co);
+          const cols2 = S.columns;
+          const cw2 = cols2.map(c=>c.role==='number'?'width:50px;':c.role==='company'?'width:28%;':'');
+          const theadHTML = `<thead><tr>${cols2.map((c,ci)=>`<th style="${cw2[ci]}">${c.name}</th>`).join('')}</tr></thead>`;
+          const tableWrap = html => `<table class="dt" style="table-layout:fixed;width:100%;">${html}</table>`;
+
+          // 페이지 헤더 캔버스 (첫 페이지 / 계속 페이지)
+          const mkHeader = title => `<div class="dat">${title}</div>${tableWrap(theadHTML)}`;
+          const hdr1Canvas = await renderChunk(mkHeader('(첨부) 2. 입과자 명단'));
+          const hdrNCanvas = await renderChunk(mkHeader('(첨부) 2. 입과자 명단(계속)'));
+          const hdr1PtH = canvasPtH(hdr1Canvas);
+          const hdrNPtH = canvasPtH(hdrNCanvas);
+
+          // tbody 전체 캔버스 (헤더 포함해야 table-layout:fixed 너비 결정)
+          const tbodyRows = coRoster2.length
+            ? coRoster2.map((r,i)=>'<tr>'+cols2.map(c=>{
+                let v; if(c.role==='number') v=i+1; else v=r._all?(r._all[c.name]||''):'';
+                const isL=(c.role==='data'&&c.name.indexOf('부서')>=0);
+                return `<td${isL?' class="tl"':''}>${v}</td>`;
+              }).join('')+'</tr>').join('')
+            : `<tr><td colspan="${cols2.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
+          // thead+tbody 같이 렌더해서 너비 통일, 나중에 thead 높이만큼 잘라냄
+          const fullTableCanvas = await renderChunk(tableWrap(theadHTML+`<tbody>${tbodyRows}</tbody>`));
+          const theadOnlyCanvas = await renderChunk(tableWrap(theadHTML));
+          const theadPxH = theadOnlyCanvas.height; // 슬라이스 시작점
+          const pxPerPt = fullTableCanvas.width / contentW;
+          const searchPx = Math.round(40 * pxPerPt);
+
+          let srcPxY = theadPxH; // tbody 시작
+          let isFirst = true;
+          while(srcPxY < fullTableCanvas.height || isFirst){
+            const hdrCanvas = isFirst ? hdr1Canvas : hdrNCanvas;
+            const hdrPtH = isFirst ? hdr1PtH : hdrNPtH;
+            const contentMaxPx = Math.round((maxH - hdrPtH) * pxPerPt);
+            const remainPx = fullTableCanvas.height - srcPxY;
+
+            let slicePxH;
+            if(remainPx <= 0){ // 내용 없어도 빈 페이지 방지
+              isFirst = false; break;
+            } else if(remainPx <= contentMaxPx){
+              slicePxH = remainPx;
+            } else {
+              const idealPx = srcPxY + contentMaxPx;
+              const safePx = findSafeCutPx(fullTableCanvas, idealPx, searchPx);
+              slicePxH = safePx - srcPxY;
+              if(slicePxH <= 0) slicePxH = contentMaxPx;
+            }
+
+            // tbody 슬라이스 캔버스
+            const sliceC = document.createElement('canvas');
+            sliceC.width = fullTableCanvas.width; sliceC.height = slicePxH;
+            const sctx = sliceC.getContext('2d');
+            sctx.fillStyle='#fff'; sctx.fillRect(0,0,sliceC.width,sliceC.height);
+            sctx.drawImage(fullTableCanvas, 0, srcPxY, fullTableCanvas.width, slicePxH, 0, 0, fullTableCanvas.width, slicePxH);
+
+            // 헤더 + 슬라이스 합성
+            const pc = document.createElement('canvas');
+            pc.width = fullTableCanvas.width; pc.height = hdrCanvas.height + slicePxH;
+            const pctx = pc.getContext('2d');
+            pctx.fillStyle='#fff'; pctx.fillRect(0,0,pc.width,pc.height);
+            pctx.drawImage(hdrCanvas,0,0);
+            pctx.drawImage(sliceC,0,hdrCanvas.height);
+
+            const pagePtH = canvasPtH(pc);
+            const pngBytes = await fetch(pc.toDataURL('image/png')).then(r=>r.arrayBuffer());
+            const pngImg = await newDoc.embedPng(pngBytes);
+            const pdfPage = newDoc.addPage([A4_W, A4_H]);
+            pdfPage.drawImage(pngImg, {x:MX_PT, y:A4_H-MT_PT-pagePtH, width:contentW, height:pagePtH});
+
+            srcPxY += slicePxH;
+            isFirst = false;
           }
+          await appendExt(newDoc, extByPos.after_roster);
+          continue;
         }
-        if(isRoster) await appendExt(newDoc, extByPos.after_roster);
       }
 
       const finalBytes = await newDoc.save();
