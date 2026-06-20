@@ -2344,8 +2344,9 @@ async function generateZIP(){
 
           // 페이지 헤더 캔버스 (첫 페이지 / 계속 페이지)
           // thead 포함 테이블로 컬럼 너비 확정
+          // margin-bottom:0 으로 .dt 기본 9px 여백 제거 (body와 합성 시 갭 방지)
           const mkHeader = title =>
-            `<div class="dat">${title}</div>${tableOpen}${colgroup}${theadHTML}</table>`;
+            `<div class="dat">${title}</div><table class="dt" style="table-layout:fixed;width:100%;margin-bottom:0;">${colgroup}${theadHTML}</table>`;
           const hdr1Canvas = await renderChunk(mkHeader('(첨부) 2. 입과자 명단'));
           const hdrNCanvas = await renderChunk(mkHeader('(첨부) 2. 입과자 명단(계속)'));
           const hdr1PtH = canvasPtH(hdr1Canvas);
