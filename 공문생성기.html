@@ -2391,12 +2391,16 @@ async function generateZIP(){
             sctx.drawImage(bodyCanvas, 0, srcPxY, bodyCanvas.width, slicePxH, 0, 0, bodyCanvas.width, slicePxH);
 
             // 헤더 + 슬라이스 합성
+            // thead 하단 border(3px at scale:3)와 tbody 첫 행 상단 border가
+            // 이중으로 그려지는 것을 방지하기 위해 3px만큼 슬라이스를 위로 당김
+            const borderOverlap = 3;
             const pc = document.createElement('canvas');
-            pc.width = bodyCanvas.width; pc.height = hdrCanvas.height + slicePxH;
+            pc.width = bodyCanvas.width;
+            pc.height = hdrCanvas.height + slicePxH - borderOverlap;
             const pctx = pc.getContext('2d');
             pctx.fillStyle='#fff'; pctx.fillRect(0,0,pc.width,pc.height);
             pctx.drawImage(hdrCanvas,0,0);
-            pctx.drawImage(sliceC,0,hdrCanvas.height);
+            pctx.drawImage(sliceC,0,hdrCanvas.height - borderOverlap);
 
             const pagePtH = canvasPtH(pc);
             const pngBytes = await fetch(pc.toDataURL('image/png')).then(r=>r.arrayBuffer());
