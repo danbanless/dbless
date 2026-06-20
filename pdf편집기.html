@@ -684,7 +684,7 @@ async function downloadAsImages(format){
     }
     return pdfCache[b64];
   }
-  const scale=3.0; // ~216 dpi for A4
+  const scale=4.167; // 300 dpi for A4 (72dpi × 4.167)
   const mimeType=format==='jpg'?'image/jpeg':'image/png';
   const ext=format==='jpg'?'jpg':'png';
   const quality=format==='jpg'?0.92:undefined;
