@@ -98,7 +98,7 @@ input[type=range]{flex:1;accent-color:var(--indigo);min-width:80px;}
 
 <div class="wrap">
 
-  <div class="model-note">
+  <div class="model-note" id="modelNote">
     ℹ️ 첫 실행 시 AI 모델을 다운로드합니다 (약 40MB). 이후 브라우저에 캐시되어 즉시 실행됩니다.
   </div>
 
@@ -191,7 +191,33 @@ input[type=range]{flex:1;accent-color:var(--indigo);min-width:80px;}
 </div>
 
 <script type="module">
-import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.mjs';
+// ── 라이브러리 동적 로드 (정적 import 실패 시 스크립트 전체 죽는 문제 방지) ──
+let removeBackground = null;
+
+(async () => {
+  const candidates = [
+    'https://esm.sh/@imgly/background-removal',
+    'https://esm.sh/@imgly/background-removal@1.4.5',
+    'https://esm.sh/@imgly/background-removal@1.4.4',
+  ];
+  for (const url of candidates) {
+    try {
+      const mod = await import(url);
+      if (typeof mod.removeBackground === 'function') {
+        removeBackground = mod.removeBackground;
+        console.log('✅ background-removal loaded from', url);
+        break;
+      }
+    } catch(e) {
+      console.warn('CDN 실패:', url, e.message);
+    }
+  }
+  if (!removeBackground) {
+    document.getElementById('modelNote').textContent =
+      '⚠️ AI 라이브러리 로드 실패. 인터넷 연결 확인 후 새로고침하세요.';
+    document.getElementById('modelNote').style.color = '#b94040';
+  }
+})();
 
 // ── 상태 ─────────────────────────────────────────────────────
 let origImageData = null;
@@ -240,11 +266,15 @@ async function handleFile(file) {
 
 // ── AI 처리 (@imgly/background-removal) ──────────────────────
 async function runSegmentation(file) {
+  if (!removeBackground) {
+    setStatus('AI 라이브러리가 아직 로드 중입니다. 잠시 후 다시 시도하세요.', 'err');
+    hideLoading(); uz.style.display = ''; return;
+  }
   setLoadTxt('AI 배경 제거 중...', '사람·제품·동물 범용 모델');
   setLoadBar(0);
   try {
     const resultBlob = await removeBackground(file, {
-      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
+      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal/dist/',
       model: 'small',
       output: { format: 'image/png', quality: 1 },
       progress: (key, cur, total) => {
