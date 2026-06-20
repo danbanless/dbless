@@ -853,6 +853,18 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 </div><!-- /layout -->
 
 <script>
+// ══ 명단 textarea: Tab 키 → 탭 문자 삽입 ══
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('rosterInput');
+  if(ta) ta.addEventListener('keydown', e => {
+    if(e.key !== 'Tab') return;
+    e.preventDefault();
+    const s = ta.selectionStart;
+    ta.value = ta.value.slice(0, s) + '\t' + ta.value.slice(ta.selectionEnd);
+    ta.selectionStart = ta.selectionEnd = s + 1;
+  });
+});
+
 // ══ 템플릿 ══════════════════════════════
 const TMPLS = {
   silsi:{
@@ -1874,7 +1886,7 @@ function parseRoster(){
   renderTags();
   document.getElementById('rosterResult').style.display='block';
   document.getElementById('rosterSum').textContent=`총 ${parsed.length}명 / ${S.companies.length}개사`;
-  document.getElementById('stTxt').textContent=`${parsed.length}명, ${S.companies.length}개사`;
+  {const _e=document.getElementById('stTxt');if(_e)_e.textContent=`${parsed.length}명, ${S.companies.length}개사`;}
   previewDoc();
 }
 function renderTags(){
@@ -2216,7 +2228,7 @@ async function generateZIP(){
 
     btn.disabled=false;pw.classList.remove('on');
     oi.textContent=`${active.length}개사 ZIP 완료`;
-    document.getElementById('stTxt').textContent=`완료: ${active.length}개사`;
+    {const _e=document.getElementById('stTxt');if(_e)_e.textContent=`완료: ${active.length}개사`;}
   } catch(err) {
     console.error('[생성] 오류:', err);
     alert('PDF 생성 중 오류:\n' + err.message + '\n\n콘솔(F12)에서 상세 확인');
