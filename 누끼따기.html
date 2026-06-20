@@ -29,14 +29,28 @@ body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;backg
 .result-wrap{display:none;}
 .result-wrap.on{display:block;}
 
-.canvas-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;}
+.canvas-row{display:grid;grid-template-columns:170px 1fr;gap:14px;margin-bottom:14px;align-items:start;}
 .canvas-box{background:#fff;border:1px solid var(--gray-100);border-radius:8px;overflow:hidden;}
-.canvas-label{font-size:11px;font-weight:700;color:var(--gray-500);padding:8px 12px;border-bottom:1px solid var(--gray-100);letter-spacing:.04em;display:flex;align-items:center;justify-content:space-between;}
-.canvas-inner{padding:10px;display:flex;align-items:center;justify-content:center;min-height:220px;background:repeating-conic-gradient(#e8e4dc 0% 25%,#f5f2ec 0% 50%) 0 0/16px 16px;position:relative;}
-.canvas-inner canvas{max-width:100%;max-height:320px;border-radius:3px;}
+.canvas-label{font-size:11px;font-weight:700;color:var(--gray-500);padding:7px 12px;border-bottom:1px solid var(--gray-100);letter-spacing:.04em;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
 
-#brushCanvas{position:absolute;top:10px;left:10px;max-width:calc(100% - 20px);max-height:320px;border-radius:3px;pointer-events:none;}
+/* 원본 썸네일 패널 */
+.canvas-inner{padding:8px;display:flex;align-items:center;justify-content:center;min-height:120px;background:repeating-conic-gradient(#e8e4dc 0% 25%,#f5f2ec 0% 50%) 0 0/16px 16px;}
+.canvas-inner canvas{max-width:100%;max-height:200px;border-radius:2px;}
+
+/* 편집 결과 뷰포트 (줌+스크롤) */
+.canvas-viewport{overflow:auto;height:66vh;min-height:320px;padding:16px;background:repeating-conic-gradient(#e8e4dc 0% 25%,#f5f2ec 0% 50%) 0 0/16px 16px;position:relative;}
+#canvasWrapper{position:relative;display:inline-block;line-height:0;cursor:crosshair;}
+#canvasWrapper canvas{display:block;border-radius:2px;}
+#brushCanvas{position:absolute;top:0;left:0;pointer-events:none;}
 #brushCanvas.active{pointer-events:auto;cursor:none;}
+
+/* 줌 컨트롤 */
+.zoom-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.zoom-btn{width:22px;height:22px;border:1px solid var(--gray-300);border-radius:4px;background:#fff;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--gray-700);padding:0;transition:all .12s;font-family:inherit;}
+.zoom-btn:hover{border-color:var(--indigo);color:var(--indigo);}
+.zoom-val{font-size:11px;font-weight:700;color:var(--gray-700);min-width:36px;text-align:center;font-family:var(--mono);}
+.zoom-fit{font-size:10px;font-weight:600;padding:2px 7px;border:1px solid var(--gray-300);border-radius:4px;background:#fff;cursor:pointer;color:var(--gray-500);transition:all .12s;}
+.zoom-fit:hover{border-color:var(--indigo);color:var(--indigo);}
 
 .controls{background:#fff;border:1px solid var(--gray-100);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
 .ctrl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
@@ -129,10 +143,18 @@ input[type=range]{flex:1;accent-color:var(--indigo);min-width:80px;}
         <div class="canvas-label">
           <span>편집 결과</span>
           <span id="brushModeLabel" style="font-size:10px;color:var(--gray-500);">브러시 도구를 선택하세요</span>
+          <div class="zoom-ctrl">
+            <button class="zoom-btn" onclick="changeZoom(-1)" title="축소">−</button>
+            <span class="zoom-val" id="zoomVal">100%</span>
+            <button class="zoom-btn" onclick="changeZoom(1)" title="확대">+</button>
+            <button class="zoom-fit" onclick="fitZoom()" title="화면에 맞추기">맞춤</button>
+          </div>
         </div>
-        <div class="canvas-inner" id="editInner">
-          <canvas id="canvasResult"></canvas>
-          <canvas id="brushCanvas"></canvas>
+        <div class="canvas-viewport" id="canvasViewport">
+          <div id="canvasWrapper">
+            <canvas id="canvasResult"></canvas>
+            <canvas id="brushCanvas"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -205,6 +227,42 @@ const PROCESSOR_CONFIG = {
 };
 
 let aiModel = null, aiProcessor = null;
+
+// ── 줌 ───────────────────────────────────────────────────────
+const ZOOM_LEVELS = [0.25, 0.33, 0.5, 0.67, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
+let zoom = 1.0;
+
+function setZoom(z) {
+  zoom = z;
+  const pct = Math.round(z * 100);
+  document.getElementById('zoomVal').textContent = pct + '%';
+  const wrapper = document.getElementById('canvasWrapper');
+  const w = Math.round(imgW * z);
+  const h = Math.round(imgH * z);
+  wrapper.style.width  = w + 'px';
+  wrapper.style.height = h + 'px';
+  canvasResult.style.width  = w + 'px';
+  canvasResult.style.height = h + 'px';
+  brushCanvas.style.width   = w + 'px';
+  brushCanvas.style.height  = h + 'px';
+}
+
+window.fitZoom = function() {
+  if (!imgW) return;
+  const vp = document.getElementById('canvasViewport');
+  const vw = vp.clientWidth - 32; // padding 16px × 2
+  const z = Math.min(1.0, vw / imgW);
+  setZoom(z);
+};
+
+window.changeZoom = function(dir) {
+  if (!imgW) return;
+  let idx = ZOOM_LEVELS.findIndex(z => z >= zoom);
+  if (idx === -1) idx = ZOOM_LEVELS.length - 1;
+  if (dir > 0) idx = Math.min(ZOOM_LEVELS.length - 1, idx + 1);
+  else idx = Math.max(0, idx - (ZOOM_LEVELS[idx] === zoom ? 1 : 0));
+  setZoom(ZOOM_LEVELS[idx]);
+};
 
 // ── 상태 ─────────────────────────────────────────────────────
 let origImageData = null;
@@ -303,6 +361,7 @@ async function runSegmentation(file) {
     hideLoading();
     document.getElementById('resultWrap').classList.add('on');
     applySettings();
+    fitZoom();
     setStatus('완료! 슬라이더로 조정하거나 브러시로 수동 보정하세요.', 'ok');
   } catch(e) {
     setStatus('처리 실패: ' + e.message, 'err');
@@ -531,6 +590,13 @@ brushCanvas.addEventListener('touchmove', e => {
   paintBrush(pos.x, pos.y);
 }, { passive: false });
 brushCanvas.addEventListener('touchend', () => isDrawing = false);
+
+// Ctrl+휠 줌 (뷰포트에서)
+document.getElementById('canvasViewport').addEventListener('wheel', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  changeZoom(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
 
 // ── 되돌리기 ─────────────────────────────────────────────────
 window.undoBrush = function() {
