@@ -1989,17 +1989,30 @@ function buildDoc(co,d){
     ?`${d.target} <strong>${totalN}명</strong>`
     :`${active.join(', ')} 임직원 중 희망자 <strong>${totalN}명</strong>`;
   const cols=S.columns;
-  const rows=coRoster.length
-    ?coRoster.map((r,i)=>{
-      return '<tr>'+cols.map(c=>{
-        let v;
-        if(c.role==='number') v=i+1;
-        else v = r._all ? (r._all[c.name]||'') : '';
-        const isLeft = (c.role==='data' && c.name.indexOf('부서')>=0);
-        return `<td${isLeft?' class="tl"':''}>${v}</td>`;
-      }).join('')+'</tr>';
-    }).join('')
-    :`<tr><td colspan="${cols.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
+  // 명단 33명 단위 페이지 분할
+  const ROSTER_PER_PAGE = 33;
+  function buildRosterDps(roster, cols){
+    if(!roster.length){
+      const emptyRow=`<tr><td colspan="${cols.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
+      return `<div class="dp" data-page-type="roster"><div class="dat">(첨부) 2. 입과자 명단</div><table class="dt"><thead><tr>${cols.map(c=>`<th>${c.name}</th>`).join('')}</tr></thead><tbody>${emptyRow}</tbody></table></div>`;
+    }
+    let html='';
+    for(let start=0; start<roster.length; start+=ROSTER_PER_PAGE){
+      const chunk=roster.slice(start, start+ROSTER_PER_PAGE);
+      const title=start===0?'(첨부) 2. 입과자 명단':'(첨부) 2. 입과자 명단(계속)';
+      const chunkRows=chunk.map((r,i)=>{
+        return '<tr>'+cols.map(c=>{
+          let v;
+          if(c.role==='number') v=start+i+1;
+          else v = r._all ? (r._all[c.name]||'') : '';
+          const isLeft=(c.role==='data'&&c.name.indexOf('부서')>=0);
+          return `<td${isLeft?' class="tl"':''}>${v}</td>`;
+        }).join('')+'</tr>';
+      }).join('');
+      html+=`<div class="dp" data-page-type="roster"><div class="dat">${title}</div><table class="dt"><thead><tr>${cols.map(c=>`<th>${c.name}</th>`).join('')}</tr></thead><tbody>${chunkRows}</tbody></table></div>`;
+    }
+    return html;
+  }
   const feeDetail=(d.fee&&coRoster.length)
     ?` (${d.fee}만원 × ${coRoster.length}명 = ${(parseInt(d.fee)*coRoster.length).toLocaleString()}원)`:'';
   const schedStr=d.st?`${d.st} ~ ${d.en}${d.hrs?' ('+d.hrs+'Hrs)':''}` :'';
@@ -2036,13 +2049,7 @@ function buildDoc(co,d){
   <div class="dat">(첨부) 1. 과정 시간표</div>
   ${ttSection}
 </div>
-<div class="dp" data-page-type="roster">
-  <div class="dat">(첨부) 2. 입과자 명단</div>
-  <table class="dt">
-    <thead><tr>${cols.map(c=>`<th>${c.name}</th>`).join('')}</tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-</div>`;
+${buildRosterDps(coRoster, cols)}`;
 }
 
 // ══ 미리보기 ════════════════════════
@@ -2166,62 +2173,138 @@ async function generateZIP(){
       // pdf-lib 새 문서
       const newDoc = await PDFLib.PDFDocument.create();
 
+      // ── 청크 렌더 헬퍼 ──
+      async function renderChunk(chunkHTML, fixedH){
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${DOC_STYLE}</style></head><body>${chunkHTML}</body></html>`);
+        iframe.contentDocument.close();
+        await new Promise(r=>setTimeout(r,180));
+        const h = fixedH || Math.max(iframe.contentDocument.body.scrollHeight, 10);
+        iframe.style.height = h + 'px';
+        await new Promise(r=>setTimeout(r,80));
+        return html2canvas(iframe.contentDocument.body,{scale:3.0,useCORS:true,logging:false,backgroundColor:'#ffffff',width:680,height:h,windowWidth:680,windowHeight:h,imageTimeout:0});
+      }
+      const canvasPtH = c => (c.height / c.width) * contentW;
+
       for(let dpIdx=0; dpIdx<dpEls.length; dpIdx++){
         const dp = dpEls[dpIdx];
         const pageType = dp.dataset.pageType;
         const isTimetable = pageType === 'timetable';
         const isRoster = pageType === 'roster';
+        const isBody = pageType === 'body';
 
-        // 명단 앞에 들어갈 첨부 (현재 페이지가 명단이면, 추가 전에 삽입)
+        // 명단 앞에 들어갈 첨부
         if(isRoster) await appendExt(newDoc, extByPos.before_roster);
 
-        // 시간표 페이지이고 원본 PDF 있으면 → 원본 페이지 그대로 복사
+        // 시간표: 원본 PDF 있으면 그대로 복사
         if(isTimetable && ttSourceDoc){
           const allIdx = ttSourceDoc.getPageIndices();
           const copied = await newDoc.copyPages(ttSourceDoc, allIdx);
           copied.forEach(p => newDoc.addPage(p));
-          // 시간표 뒤 첨부
           await appendExt(newDoc, extByPos.after_timetable);
           continue;
         }
 
-        // 일반 페이지: html2canvas → PNG → pdf-lib embed
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${DOC_STYLE}</style></head><body>${dp.outerHTML}</body></html>`);
-        iframe.contentDocument.close();
-        await new Promise(r=>setTimeout(r,200));
-        const h=Math.max(iframe.contentDocument.body.scrollHeight,100);
-        iframe.style.height=h+'px';
-        await new Promise(r=>setTimeout(r,100));
+        // ── 본문: 섹션 단위 페이지 분할 ──
+        if(isBody){
+          const dpChildren = Array.from(dp.children);
+          const secEls = dpChildren.filter(c=>c.classList&&c.classList.contains('dsec'));
+          const firstSecIdx = secEls.length ? dpChildren.indexOf(secEls[0]) : dpChildren.length;
+          const lastSecIdx = secEls.length ? dpChildren.indexOf(secEls[secEls.length-1]) : -1;
 
-        const canvas=await html2canvas(iframe.contentDocument.body,{
-          scale:3.0, useCORS:true, logging:false, backgroundColor:'#ffffff',
-          width:680, height:h, windowWidth:680, windowHeight:h,
-          imageTimeout:0, allowTaint:false,
-        });
+          const headerHTML = dpChildren.slice(0, firstSecIdx).map(e=>e.outerHTML).join('');
+          const sectionHTMLs = secEls.map(e=>e.outerHTML);
+          const footerHTML = lastSecIdx>=0 ? dpChildren.slice(lastSecIdx+1).map(e=>e.outerHTML).join('') : '';
+
+          const headerCanvas = await renderChunk(headerHTML);
+          const footerCanvas = footerHTML ? await renderChunk(footerHTML) : null;
+          const secCanvases = [];
+          for(const sh of sectionHTMLs) secCanvases.push(await renderChunk(sh));
+
+          const headerPtH = canvasPtH(headerCanvas);
+          const footerPtH = footerCanvas ? canvasPtH(footerCanvas) : 0;
+
+          // 섹션을 페이지에 배분
+          const pages = [];
+          let curChunks = [headerCanvas];
+          let curPtH = headerPtH;
+
+          for(let si=0; si<secCanvases.length; si++){
+            const sc = secCanvases[si];
+            const sPtH = canvasPtH(sc);
+            const isLast = si === secCanvases.length - 1;
+            const reserve = (isLast && footerCanvas) ? footerPtH : 0;
+            // 현재 페이지에 헤더만 있거나(빈 페이지 방지) 넣을 공간 있으면 추가
+            if(curChunks.length > 1 && curPtH + sPtH + reserve > maxH){
+              pages.push(curChunks);
+              curChunks = [];
+              curPtH = 0;
+            }
+            curChunks.push(sc);
+            curPtH += sPtH;
+          }
+          if(footerCanvas) curChunks.push(footerCanvas);
+          pages.push(curChunks);
+
+          // 각 페이지 캔버스 합성 → PDF 추가
+          for(const chunks of pages){
+            const totalPxH = chunks.reduce((s,c)=>s+c.height,0);
+            const pc = document.createElement('canvas');
+            pc.width = chunks[0].width; pc.height = totalPxH;
+            const pctx = pc.getContext('2d');
+            pctx.fillStyle='#fff'; pctx.fillRect(0,0,pc.width,pc.height);
+            let yOff=0;
+            for(const c of chunks){ pctx.drawImage(c,0,yOff); yOff+=c.height; }
+            const pagePtH = canvasPtH(pc);
+            const pngBytes = await fetch(pc.toDataURL('image/png')).then(r=>r.arrayBuffer());
+            const pngImg = await newDoc.embedPng(pngBytes);
+            const pdfPage = newDoc.addPage([A4_W, A4_H]);
+            pdfPage.drawImage(pngImg, {x:MX_PT, y:A4_H-MT_PT-pagePtH, width:contentW, height:pagePtH});
+          }
+          await appendExt(newDoc, extByPos.after_body);
+          continue;
+        }
+
+        // ── 시간표 (HTML 모드): A4 높이 전체 채우기 ──
+        if(isTimetable){
+          const ttTargetH = Math.round(maxH * 680 / contentW);
+          const ttStyle = DOC_STYLE + `body{height:${ttTargetH}px;display:flex;flex-direction:column;}.dp{flex:1;display:flex;flex-direction:column;}.dat{flex-shrink:0;}table.dt.ttbl{flex:1;}`;
+          iframe.contentDocument.open();
+          iframe.contentDocument.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${ttStyle}</style></head><body>${dp.outerHTML}</body></html>`);
+          iframe.contentDocument.close();
+          await new Promise(r=>setTimeout(r,200));
+          iframe.style.height = ttTargetH + 'px';
+          await new Promise(r=>setTimeout(r,100));
+          const canvas = await html2canvas(iframe.contentDocument.body,{scale:3.0,useCORS:true,logging:false,backgroundColor:'#ffffff',width:680,height:ttTargetH,windowWidth:680,windowHeight:ttTargetH,imageTimeout:0});
+          const imgH = canvasPtH(canvas);
+          const pngBytes = await fetch(canvas.toDataURL('image/png')).then(r=>r.arrayBuffer());
+          const pngImg = await newDoc.embedPng(pngBytes);
+          const pdfPage = newDoc.addPage([A4_W, A4_H]);
+          pdfPage.drawImage(pngImg, {x:MX_PT, y:A4_H-MT_PT-imgH, width:contentW, height:imgH});
+          await appendExt(newDoc, extByPos.after_timetable);
+          continue;
+        }
+
+        // ── 명단 및 기타 페이지: 기본 렌더 ──
+        const canvas = await renderChunk(dp.outerHTML);
         const pngBytes = await fetch(canvas.toDataURL('image/png')).then(r=>r.arrayBuffer());
         const pngImage = await newDoc.embedPng(pngBytes);
-
-        const imgH=(canvas.height/canvas.width)*contentW;
+        const imgH = canvasPtH(canvas);
         if(imgH<=maxH){
           const page = newDoc.addPage([A4_W, A4_H]);
           page.drawImage(pngImage, {x:MX_PT, y:A4_H-MT_PT-imgH, width:contentW, height:imgH});
         } else {
-          // 여러 페이지로 분할 (글줄 사이에서 자르기)
           let remaining=imgH, srcY=0;
           const pxPerPt = canvas.width / contentW;
-          const searchPt = 40; // 경계 위쪽 40pt 내에서 흰 행 탐색
+          const searchPt = 40;
           while(remaining>0.5){
             const idealCutPt = Math.min(maxH, remaining);
             const idealCutPx = Math.round((srcY + idealCutPt) * pxPerPt);
-            const safeCutPx = remaining > maxH
-              ? findSafeCutPx(canvas, idealCutPx, Math.round(searchPt * pxPerPt))
-              : idealCutPx;
+            const safeCutPx = remaining > maxH ? findSafeCutPx(canvas, idealCutPx, Math.round(searchPt * pxPerPt)) : idealCutPx;
             const sliceHpx = safeCutPx - Math.round(srcY * pxPerPt);
             const sliceH = sliceHpx / pxPerPt;
             const sc=document.createElement('canvas');
-            sc.width=canvas.width;
-            sc.height=sliceHpx;
+            sc.width=canvas.width; sc.height=sliceHpx;
             const sctx=sc.getContext('2d');
             sctx.fillStyle='#fff'; sctx.fillRect(0,0,sc.width,sc.height);
             sctx.drawImage(canvas,0,Math.round(srcY*pxPerPt),canvas.width,sliceHpx,0,0,canvas.width,sliceHpx);
@@ -2232,10 +2315,7 @@ async function generateZIP(){
             remaining -= sliceH; srcY += sliceH;
           }
         }
-        // 이 페이지 종류에 해당하는 첨부 삽입 (페이지 뒤)
-        if(pageType === 'body') await appendExt(newDoc, extByPos.after_body);
-        else if(isTimetable) await appendExt(newDoc, extByPos.after_timetable);  // 기본 시간표 케이스
-        else if(isRoster) await appendExt(newDoc, extByPos.after_roster);
+        if(isRoster) await appendExt(newDoc, extByPos.after_roster);
       }
 
       const finalBytes = await newDoc.save();
