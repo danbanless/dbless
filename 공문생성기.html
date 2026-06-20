@@ -150,7 +150,6 @@ body{font-family:var(--ui);background:var(--bg);color:var(--tx);min-height:100vh
 .bullet{font-size:14pt;line-height:1.9;padding-left:1.2em;}
 .dash{font-size:14pt;line-height:1.9;padding-left:2.4em;}
 .ttbl td,.ttbl th{font-size:11pt;white-space:pre-line;}
-.ttbl td:nth-child(3),.ttbl td:nth-child(4){text-align:left;}
 .ph-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px;color:var(--mu);text-align:center;gap:8px;}
 .ph-msg p{font-size:14px;}
 .ph-msg small{font-size:12px;color:#aaa;}
@@ -747,6 +746,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     <!-- 직접 입력 영역 -->
     <div id="ttEditArea">
       <div class="sec">시간표 입력</div>
+      <div style="background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600;">컬럼 구성 <span style="font-weight:400;color:#aaa;">(시간 외)</span></div>
+        <div id="ttColWrap" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;"></div>
+        <button onclick="addTTCol()" style="font-size:11px;padding:3px 10px;border:1.5px solid var(--acc);border-radius:5px;background:transparent;color:var(--acc);cursor:pointer;font-weight:600;">+ 컬럼 추가</button>
+      </div>
       <div class="rh" style="margin-bottom:8px;">시간과 내용을 행별로 입력하세요. 행 추가·삭제 가능.</div>
       <div id="ttEditorWrap"></div>
       <button onclick="addTTRow();if(S.roster.length)previewDoc();" class="add-sec-btn" style="margin-top:4px;">+ 행 추가</button>
@@ -903,26 +907,51 @@ const TMPLS = {
   }
 };
 
-// TT_ROWS: [{time, content}] — 1일 과정 기본 시간표
+// TT_COLS: 시간 외 컬럼명 목록
+let TT_COLS = ['주요 활동'];
+// TT_ROWS: [{time, cols:[...]}]
 let TT_ROWS = [
-  {time:'09:00', content:''},
-  {time:'10:00', content:''},
-  {time:'11:00', content:''},
-  {time:'12:00', content:'점심 식사'},
-  {time:'13:00', content:''},
-  {time:'14:00', content:''},
-  {time:'15:00', content:''},
-  {time:'16:00', content:''},
-  {time:'17:00', content:''},
+  {time:'09:00', cols:['']},
+  {time:'10:00', cols:['']},
+  {time:'11:00', cols:['']},
+  {time:'12:00', cols:['점심 식사']},
+  {time:'13:00', cols:['']},
+  {time:'14:00', cols:['']},
+  {time:'15:00', cols:['']},
+  {time:'16:00', cols:['']},
+  {time:'17:00', cols:['']},
 ];
 function saveTTRows(){
   TT_ROWS = [];
   document.querySelectorAll('.tt-row').forEach(row=>{
-    TT_ROWS.push({
-      time: row.querySelector('.tt-time').value.trim(),
-      content: row.querySelector('.tt-content').value.trim(),
-    });
+    const vals = Array.from(row.querySelectorAll('.tt-col-val')).map(inp=>inp.value.trim());
+    TT_ROWS.push({ time: row.querySelector('.tt-time').value.trim(), cols: vals });
   });
+}
+function renderTTColConfig(){
+  const wrap = document.getElementById('ttColWrap');
+  if(!wrap) return;
+  wrap.innerHTML = TT_COLS.map((col,i)=>`
+    <div style="display:flex;align-items:center;gap:3px;">
+      <input class="bi" style="width:88px;font-size:12px;padding:3px 6px;" value="${col.replace(/"/g,'&quot;')}"
+        oninput="TT_COLS[${i}]=this.value;if(S.roster.length)previewDoc();">
+      ${TT_COLS.length>1?`<button onclick="removeTTCol(${i})" style="background:none;border:none;cursor:pointer;color:#c00;font-size:13px;padding:0 2px;line-height:1;">✕</button>`:''}
+    </div>
+  `).join('');
+}
+function addTTCol(){
+  saveTTRows();
+  TT_COLS.push('항목');
+  TT_ROWS.forEach(r=>{ while(r.cols.length<TT_COLS.length) r.cols.push(''); });
+  renderTTColConfig(); renderTTEditor();
+  if(S.roster.length) previewDoc();
+}
+function removeTTCol(i){
+  saveTTRows();
+  TT_COLS.splice(i,1);
+  TT_ROWS.forEach(r=>{ r.cols.splice(i,1); });
+  renderTTColConfig(); renderTTEditor();
+  if(S.roster.length) previewDoc();
 }
 function renderTTEditor(){
   const wrap = document.getElementById('ttEditorWrap');
@@ -930,7 +959,7 @@ function renderTTEditor(){
   wrap.innerHTML = TT_ROWS.map((r,i)=>`
     <div class="tt-row" data-idx="${i}" style="display:flex;gap:5px;align-items:flex-start;margin-bottom:4px;">
       <input class="tt-time bi" style="width:68px;flex-shrink:0;" placeholder="09:00" value="${r.time}">
-      <input class="tt-content bi" style="flex:1;" placeholder="내용 입력" value="${r.content.replace(/"/g,'&quot;')}">
+      ${TT_COLS.map((_,ci)=>`<input class="tt-col-val bi" style="flex:1;" placeholder="${TT_COLS[ci].replace(/"/g,'&quot;')}" value="${((r.cols||[])[ci]||'').replace(/"/g,'&quot;')}">`).join('')}
       <button onclick="removeTTRow(${i})" class="blk-del" title="삭제">✕</button>
     </div>
   `).join('');
@@ -943,16 +972,16 @@ function removeTTRow(i){
 }
 function addTTRow(){
   saveTTRows();
-  TT_ROWS.push({time:'', content:''});
+  TT_ROWS.push({time:'', cols:TT_COLS.map(()=>'')});
   renderTTEditor();
 }
 function getTTHtml(){
   saveTTRows();
-  const rows = TT_ROWS.filter(r=>r.time||r.content);
+  const rows = TT_ROWS.filter(r=>r.time||r.cols.some(v=>v));
   if(!rows.length) return '<p style="color:#aaa;font-size:12pt;">시간표 내용을 입력해주세요.</p>';
   return `<table class="dt ttbl">
-    <thead><tr><th style="width:80px">시간</th><th class="tl">주요 활동</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${r.time}</td><td class="tl">${r.content.replace(/\n/g,'<br>')}</td></tr>`).join('')}</tbody>
+    <thead><tr><th style="width:80px">시간</th>${TT_COLS.map(c=>`<th class="tl">${c}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r.time}</td>${TT_COLS.map((_,ci)=>`<td class="tl">${((r.cols||[])[ci]||'').replace(/\n/g,'<br>')}</td>`).join('')}</tr>`).join('')}</tbody>
   </table>`;
 }
 
@@ -1136,6 +1165,7 @@ function init(){
     sUz.addEventListener('dragleave',()=>sUz.classList.remove('dv'));
     sUz.addEventListener('drop',e=>{e.preventDefault();sUz.classList.remove('dv');if(e.dataTransfer.files[0])handleSplitFile(e.dataTransfer.files[0]);});
   }
+  renderTTColConfig();
   renderTTEditor();
 }
 
@@ -2089,7 +2119,6 @@ body{margin:0;padding:0;background:#fff;font-family:'Batang','BatangChe','바탕
 .bullet{font-size:14pt;line-height:1.9;padding-left:1.2em;}
 .dash{font-size:14pt;line-height:1.9;padding-left:2.4em;}
 .ttbl td,.ttbl th{font-size:11pt;white-space:pre-line;}
-.ttbl td:nth-child(3),.ttbl td:nth-child(4){text-align:left;}
 `;
 
 async function generateZIP(){
@@ -2221,21 +2250,16 @@ async function generateZIP(){
           const secCanvases = [];
           for(const sh of sectionHTMLs) secCanvases.push(await renderChunk(sh));
 
-          const headerPtH = canvasPtH(headerCanvas);
-          const footerPtH = footerCanvas ? canvasPtH(footerCanvas) : 0;
-
-          // 섹션을 페이지에 배분
+          // 섹션을 페이지에 배분 (섹션 단위 분리, footer 별도 처리)
           const pages = [];
           let curChunks = [headerCanvas];
-          let curPtH = headerPtH;
+          let curPtH = canvasPtH(headerCanvas);
 
           for(let si=0; si<secCanvases.length; si++){
             const sc = secCanvases[si];
             const sPtH = canvasPtH(sc);
-            const isLast = si === secCanvases.length - 1;
-            const reserve = (isLast && footerCanvas) ? footerPtH : 0;
-            // 현재 페이지에 헤더만 있거나(빈 페이지 방지) 넣을 공간 있으면 추가
-            if(curChunks.length > 1 && curPtH + sPtH + reserve > maxH){
+            // 헤더만 있는 첫 페이지는 무조건 섹션 추가 (빈 페이지 방지)
+            if(curChunks.length > 1 && curPtH + sPtH > maxH){
               pages.push(curChunks);
               curChunks = [];
               curPtH = 0;
@@ -2243,7 +2267,12 @@ async function generateZIP(){
             curChunks.push(sc);
             curPtH += sPtH;
           }
-          if(footerCanvas) curChunks.push(footerCanvas);
+          // footer: 현재 페이지에 들어가면 같이, 아니면 새 페이지
+          if(footerCanvas){
+            const fPtH = canvasPtH(footerCanvas);
+            if(curPtH + fPtH > maxH){ pages.push(curChunks); curChunks = []; }
+            curChunks.push(footerCanvas);
+          }
           pages.push(curChunks);
 
           // 각 페이지 캔버스 합성 → PDF 추가
