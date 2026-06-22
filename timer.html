@@ -168,6 +168,36 @@
   letter-spacing: 0.04em;
 }
 
+/* 모니터 선택 행 */
+.monitor-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.monitor-row label {
+  font-size: 12px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.monitor-select {
+  font-size: 12px;
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  color: var(--gray-700);
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+  max-width: 200px;
+}
+.monitor-select:focus { border-color: var(--indigo); }
+
 /* ── 전체화면 모드 ── */
 body.fs-mode { background: #0a0a0a; }
 body.fs-mode .db-nav,
@@ -184,9 +214,10 @@ body.fs-mode .timer-wrap {
   gap: 0;
 }
 
-/* 전체화면에서 프리셋·커스텀 입력 숨김 */
+/* 전체화면에서 프리셋·커스텀 입력·모니터 행 숨김 */
 body.fs-mode .preset-grid,
-body.fs-mode .custom-row { display: none; }
+body.fs-mode .custom-row,
+body.fs-mode .monitor-row { display: none; }
 
 body.fs-mode .display-area { margin-bottom: 0; }
 
@@ -313,6 +344,13 @@ body.fs-mode .status-label { color: rgba(255,255,255,0.25); }
     </button>
   </div>
 
+  <div class="monitor-row" id="monitorRow">
+    <label for="monitorSelect"><i class="ti ti-device-desktop"></i> 모니터(M):</label>
+    <select id="monitorSelect" class="monitor-select">
+      <option value="auto">자동</option>
+    </select>
+  </div>
+
   <button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()">
     <i class="ti ti-arrows-maximize"></i> 전체화면
   </button>
@@ -409,27 +447,75 @@ function resetTimer() {
   document.getElementById('startBtn').className = 'ctrl-btn primary';
   document.getElementById('statusLabel').textContent = Math.floor(totalSec/60) + '분 타이머 준비됨';
 }
-function toggleFullscreen() {
+/* ── 모니터 감지 (Window Management API) ── */
+let screenDetails = null;
+
+async function initScreens() {
+  if (!('getScreenDetails' in window)) return;
+  try {
+    screenDetails = await window.getScreenDetails();
+    populateMonitorSelect();
+    screenDetails.addEventListener('screenschange', populateMonitorSelect);
+  } catch(e) { /* 권한 거부 or 미지원 — 자동 유지 */ }
+}
+
+function populateMonitorSelect() {
+  const sel = document.getElementById('monitorSelect');
+  const prevVal = sel.value;
+  sel.innerHTML = '<option value="auto">자동</option>';
+  if (!screenDetails) return;
+  screenDetails.screens.forEach((s, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    const isMain = s === screenDetails.currentScreen;
+    opt.textContent = s.label ? s.label : (isMain ? '기본 모니터' : `모니터 ${i + 1}`);
+    if (isMain) opt.textContent = '기본 모니터' + (s.label ? ' ' + s.label : '');
+    sel.appendChild(opt);
+  });
+  // 이전 선택 복원
+  if ([...sel.options].some(o => o.value === prevVal)) sel.value = prevVal;
+}
+
+function getSelectedScreen() {
+  if (!screenDetails) return null;
+  const val = document.getElementById('monitorSelect').value;
+  if (val === 'auto') return null;
+  return screenDetails.screens[parseInt(val)] || null;
+}
+
+async function toggleFullscreen() {
   const fsBtn = document.getElementById('fsBtn');
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().then(() => {
+    const screen = getSelectedScreen();
+    const opts = screen ? { screen } : {};
+    try {
+      await document.documentElement.requestFullscreen(opts);
       document.body.classList.add('fs-mode');
       fsBtn.innerHTML = '<i class="ti ti-arrows-minimize"></i> 전체화면 종료';
-    }).catch(()=>{});
+    } catch(e) {}
   } else {
-    document.exitFullscreen().then(() => {
+    try {
+      await document.exitFullscreen();
       document.body.classList.remove('fs-mode');
       fsBtn.innerHTML = '<i class="ti ti-arrows-maximize"></i> 전체화면';
-    }).catch(()=>{});
+    } catch(e) {}
   }
 }
+
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement) {
     document.body.classList.remove('fs-mode');
     document.getElementById('fsBtn').innerHTML = '<i class="ti ti-arrows-maximize"></i> 전체화면';
   }
 });
+
+// 모니터 선택 드롭다운 클릭 시 권한 요청 (아직 없다면)
+document.getElementById('monitorSelect').addEventListener('mousedown', () => {
+  if (!screenDetails) initScreens();
+});
+
 updateDisplay();
+initScreens();
 </script>
 </body>
 </html>
