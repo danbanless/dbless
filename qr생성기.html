@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR 생성기 — DBLess</title>
+  <link rel="stylesheet" href="dbless-common.css">
+  <style>
+    .wrap { max-width: 1100px; padding: 40px 48px 96px; margin: 0 auto; }
+
+    /* 탭 */
+    .mode-tabs { display: flex; gap: 6px; margin-bottom: 32px; }
+    .mode-tab {
+      padding: 8px 18px; border-radius: 100px; font-size: 14px; font-weight: 600;
+      border: 1.5px solid var(--gray-300); background: none; color: var(--gray-500);
+      cursor: pointer; transition: all 150ms; font-family: inherit;
+    }
+    .mode-tab.on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+
+    /* 메인 레이아웃 */
+    .qr-layout { display: grid; grid-template-columns: 1fr 340px; gap: 32px; align-items: start; }
+
+    /* 옵션 패널 */
+    .opt-section { margin-bottom: 24px; }
+    .opt-label {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--gray-500);
+      margin-bottom: 10px; display: block;
+    }
+    .opt-input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-300);
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+      color: var(--black); background: var(--white); outline: none;
+      transition: border-color 150ms;
+    }
+    .opt-input:focus { border-color: var(--indigo); }
+    textarea.opt-input { resize: vertical; min-height: 80px; }
+
+    .opt-row { display: flex; gap: 10px; align-items: center; }
+    .opt-row .opt-input { flex: 1; }
+
+    /* 색상 피커 */
+    .color-row { display: flex; gap: 10px; }
+    .color-item { flex: 1; }
+    .color-item label { font-size: 12px; color: var(--gray-500); display: block; margin-bottom: 5px; }
+    .color-swatch {
+      width: 100%; height: 38px; border-radius: 8px; border: 1.5px solid var(--gray-300);
+      cursor: pointer; padding: 2px; background: none;
+    }
+    input[type="color"] { width: 100%; height: 34px; border: none; padding: 0; cursor: pointer; border-radius: 6px; }
+
+    /* 도트 스타일 */
+    .dot-styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .dot-btn {
+      padding: 8px 4px; border: 1.5px solid var(--gray-300); border-radius: 8px;
+      background: none; cursor: pointer; font-size: 11px; color: var(--gray-700);
+      font-family: var(--mono); text-align: center; transition: all 150ms;
+    }
+    .dot-btn.on { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-light); }
+    .dot-preview { font-size: 18px; display: block; margin-bottom: 2px; }
+
+    /* 슬라이더 */
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type=range] { flex: 1; }
+    .slider-val { font-family: var(--mono); font-size: 12px; color: var(--gray-500); min-width: 36px; text-align: right; }
+
+    /* 로고 업로드 */
+    .logo-zone {
+      border: 1.5px dashed var(--gray-300); border-radius: 8px; padding: 16px;
+      text-align: center; cursor: pointer; transition: border-color 150ms;
+    }
+    .logo-zone:hover { border-color: var(--indigo); }
+    .logo-zone p { font-size: 13px; color: var(--gray-500); }
+    .logo-preview { max-height: 48px; max-width: 100%; margin-top: 8px; border-radius: 4px; }
+
+    /* 프레임 */
+    .frame-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .frame-btn {
+      padding: 10px 4px; border: 1.5px solid var(--gray-300); border-radius: 8px;
+      background: none; cursor: pointer; font-size: 11px; color: var(--gray-700);
+      font-family: var(--mono); text-align: center; transition: all 150ms;
+    }
+    .frame-btn.on { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-light); }
+
+    /* QR 외형 */
+    .shape-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .shape-btn {
+      padding: 8px 4px; border: 1.5px solid var(--gray-300); border-radius: 8px;
+      background: none; cursor: pointer; font-size: 11px; color: var(--gray-700);
+      font-family: var(--mono); text-align: center; transition: all 150ms;
+    }
+    .shape-btn .shape-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+    .shape-btn.on { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-light); }
+
+    /* 미리보기 패널 */
+    .preview-panel {
+      position: sticky; top: 80px;
+      background: var(--off-white); border-radius: 16px; padding: 28px 24px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    #qrWrap {
+      background: #fff; border-radius: 12px; padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; align-items: center; justify-content: center;
+      min-width: 200px; min-height: 200px;
+    }
+    #qrCanvas { display: block; }
+
+    .dl-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .dl-btn {
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--gray-300); background: var(--white); color: var(--black);
+      cursor: pointer; font-family: inherit; transition: all 150ms;
+    }
+    .dl-btn:hover { border-color: var(--indigo); color: var(--indigo); }
+    .dl-btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+    .dl-btn.primary:hover { background: var(--indigo-dark); }
+
+
+    /* 일괄 생성 */
+    .bulk-wrap { display: none; }
+    .bulk-wrap.on { display: block; }
+    .bulk-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 12px; margin-top: 20px; }
+    .bulk-item { background: var(--off-white); border-radius: 10px; padding: 12px; text-align: center; }
+    .bulk-item p { font-size: 11px; color: var(--gray-500); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Wi-Fi */
+    .wifi-wrap { display: none; }
+    .wifi-wrap.on { display: block; }
+    .sec-row { display: flex; gap: 6px; margin-bottom: 16px; }
+    .sec-btn {
+      flex: 1; padding: 8px; border: 1.5px solid var(--gray-300); border-radius: 8px;
+      background: none; font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: var(--mono); transition: all 150ms; color: var(--gray-700);
+    }
+    .sec-btn.on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+
+    .status { font-size: 13px; color: var(--gray-500); text-align: center; min-height: 18px; }
+
+    @media (max-width: 768px) {
+      .qr-layout { grid-template-columns: 1fr; }
+      .preview-panel { position: static; }
+      .wrap { padding: 24px 20px 64px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="db-nav">
+  <a class="db-nav-logo" href="index.html"><em>DB</em>Less</a>
+  <div class="db-nav-links">
+    <a href="공문생성기.html">공문생성기</a>
+    <a href="멀티메일.html">대량메일발송</a>
+    <a href="pdf편집기.html">PDF편집기</a>
+    <a href="누끼따기.html">누끼따기</a>
+    <a href="timer.html">타이머</a>
+    <a href="명찰생성기.html">명찰생성기</a>
+    <a href="qr생성기.html" class="active">QR생성기</a>
+  </div>
+</nav>
+
+<header class="db-page-header">
+  <p class="db-page-eyebrow">07 / QR생성기</p>
+  <h1 class="db-page-title">QR 생성기</h1>
+  <p class="db-page-desc">URL·텍스트·Wi-Fi QR 생성 · 로고 삽입 · PNG·SVG·JPG 다운로드 · 브라우저에서 처리</p>
+</header>
+
+<div class="wrap">
+
+  <!-- 모드 탭 -->
+  <div class="mode-tabs">
+    <button class="mode-tab on" onclick="setMode('single',this)">단일 생성</button>
+    <button class="mode-tab" onclick="setMode('wifi',this)">Wi-Fi QR</button>
+    <button class="mode-tab" onclick="setMode('bulk',this)">일괄 생성</button>
+  </div>
+
+  <!-- ── 단일 생성 ── -->
+  <div id="singleWrap">
+    <div class="qr-layout">
+      <!-- 옵션 -->
+      <div>
+        <div class="opt-section">
+          <span class="opt-label">내용</span>
+          <textarea class="opt-input" id="qrText" rows="3" placeholder="URL 또는 텍스트를 입력하세요" oninput="debounceUpdate()">https://dbless.net</textarea>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">도트 스타일</span>
+          <div class="dot-styles">
+            <button class="dot-btn on" onclick="setDot('square',this)"><span class="dot-preview">⬛</span>사각형</button>
+            <button class="dot-btn" onclick="setDot('dots',this)"><span class="dot-preview">⚫</span>원형</button>
+            <button class="dot-btn" onclick="setDot('rounded',this)"><span class="dot-preview">🟣</span>둥근</button>
+            <button class="dot-btn" onclick="setDot('extra-rounded',this)"><span class="dot-preview">🔵</span>더 둥근</button>
+            <button class="dot-btn" onclick="setDot('classy',this)"><span class="dot-preview">💠</span>클래식</button>
+            <button class="dot-btn" onclick="setDot('classy-rounded',this)"><span class="dot-preview">🔷</span>클래식+</button>
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">색상</span>
+          <div class="color-row">
+            <div class="color-item">
+              <label>전경색</label>
+              <input type="color" id="fgColor" value="#111110" oninput="debounceUpdate()">
+            </div>
+            <div class="color-item">
+              <label>배경색</label>
+              <input type="color" id="bgColor" value="#ffffff" oninput="debounceUpdate()">
+            </div>
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">크기</span>
+          <div class="slider-row">
+            <input type="range" id="sizeSlider" min="100" max="600" value="300" step="10" oninput="onSizeChange()">
+            <span class="slider-val" id="sizeVal">300px</span>
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">로고 삽입 (선택)</span>
+          <div class="logo-zone" onclick="document.getElementById('logoInput').click()" id="logoZone">
+            <p>클릭하여 로고 이미지 업로드</p>
+            <p style="font-size:11px;margin-top:4px;">PNG · SVG · JPG 권장</p>
+            <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="onLogoChange(this)">
+          </div>
+          <button id="logoRemoveBtn" style="display:none;margin-top:8px;font-size:12px;padding:4px 10px;border:1px solid var(--gray-300);border-radius:6px;background:none;cursor:pointer;color:var(--gray-500)" onclick="removeLogo()">로고 제거</button>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">프레임</span>
+          <div class="frame-opts">
+            <button class="frame-btn on" onclick="setFrame('none',this)">없음</button>
+            <button class="frame-btn" onclick="setFrame('scan',this)">스캔 안내</button>
+            <button class="frame-btn" onclick="setFrame('box',this)">박스형</button>
+          </div>
+          <div id="frameTextWrap" style="display:none;margin-top:10px;">
+            <input class="opt-input" id="frameText" type="text" value="스캔해주세요" oninput="debounceUpdate()" placeholder="프레임 문구">
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">오류 정정 레벨</span>
+          <div class="opt-row">
+            <select class="opt-input" id="eccLevel" onchange="debounceUpdate()" style="max-width:180px;">
+              <option value="L">L — 낮음 (7%)</option>
+              <option value="M" selected>M — 보통 (15%)</option>
+              <option value="Q">Q — 높음 (25%)</option>
+              <option value="H">H — 최고 (30%) — 로고 삽입 시 권장</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <span class="opt-label">QR 외형</span>
+          <div class="shape-opts">
+            <button class="shape-btn on" onclick="setShape('square',this)"><span class="shape-icon">⬛</span>사각형</button>
+            <button class="shape-btn" onclick="setShape('circle',this)"><span class="shape-icon">⭕</span>원</button>
+            <button class="shape-btn" onclick="setShape('heart',this)"><span class="shape-icon">❤️</span>하트</button>
+            <button class="shape-btn" onclick="setShape('star',this)"><span class="shape-icon">⭐</span>별</button>
+            <button class="shape-btn" onclick="setShape('triangle',this)"><span class="shape-icon">🔺</span>삼각형</button>
+            <button class="shape-btn" onclick="setShape('diamond',this)"><span class="shape-icon">🔷</span>다이아몬드</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 미리보기 -->
+      <div class="preview-panel">
+        <div id="qrWrap"><div id="qrContainer"></div></div>
+        <p class="status" id="statusTxt"></p>
+        <div class="dl-btns">
+          <button class="dl-btn primary" onclick="download('png')">PNG</button>
+          <button class="dl-btn" onclick="download('svg')">SVG</button>
+          <button class="dl-btn" onclick="download('jpeg')">JPG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Wi-Fi QR ── -->
+  <div class="wifi-wrap" id="wifiWrap">
+    <div class="qr-layout">
+      <div>
+        <div class="opt-section">
+          <span class="opt-label">보안 방식</span>
+          <div class="sec-row">
+            <button class="sec-btn on" onclick="setWifiSec('WPA',this)">WPA/WPA2</button>
+            <button class="sec-btn" onclick="setWifiSec('WEP',this)">WEP</button>
+            <button class="sec-btn" onclick="setWifiSec('nopass',this)">없음</button>
+          </div>
+        </div>
+        <div class="opt-section">
+          <span class="opt-label">네트워크 이름 (SSID)</span>
+          <input class="opt-input" id="wifiSsid" type="text" placeholder="MyWiFi" oninput="updateWifi()">
+        </div>
+        <div class="opt-section" id="wifiPwWrap">
+          <span class="opt-label">비밀번호</span>
+          <input class="opt-input" id="wifiPw" type="text" placeholder="비밀번호" oninput="updateWifi()">
+        </div>
+        <div class="opt-section">
+          <span class="opt-label">숨겨진 네트워크</span>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+            <input type="checkbox" id="wifiHidden" onchange="updateWifi()"> 숨김 네트워크
+          </label>
+        </div>
+      </div>
+      <div class="preview-panel">
+        <div id="qrWrap2"><div id="qrContainer2"></div></div>
+        <p class="status" id="statusTxt2"></p>
+        <div class="dl-btns">
+          <button class="dl-btn primary" onclick="download('png','wifi')">PNG</button>
+          <button class="dl-btn" onclick="download('svg','wifi')">SVG</button>
+          <button class="dl-btn" onclick="download('jpeg','wifi')">JPG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 일괄 생성 ── -->
+  <div class="bulk-wrap" id="bulkWrap">
+    <div class="opt-section">
+      <span class="opt-label">URL 목록 (한 줄에 하나씩)</span>
+      <textarea class="opt-input" id="bulkText" rows="8" placeholder="https://example.com&#10;https://google.com&#10;https://dbless.net"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:24px;">
+      <button class="dl-btn primary" onclick="generateBulk()">QR 일괄 생성</button>
+      <button class="dl-btn" id="bulkZipBtn" style="display:none" onclick="downloadBulkZip()">ZIP 다운로드</button>
+    </div>
+    <div class="bulk-list" id="bulkList"></div>
+  </div>
+
+</div>
+
+<!-- 라이브러리 -->
+<script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+// ── 상태 ──────────────────────────────────────────────
+let dotType   = 'square';
+let frameType = 'none';
+let wifiSec   = 'WPA';
+let shapeType = 'square';
+let logoDataUrl = null;
+let qrMain = null, qrWifi = null;
+let bulkQRs = [];
+let debTimer = null;
+let maskedCanvas = null;
+
+// ── QR 인스턴스 생성 헬퍼 ────────────────────────────
+function makeQR(data, containerId, size) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  const q = new QRCodeStyling({
+    width: size, height: size,
+    data: data || ' ',
+    dotsOptions: { type: dotType, color: document.getElementById('fgColor').value },
+    backgroundOptions: { color: document.getElementById('bgColor').value },
+    cornersSquareOptions: { type: dotType === 'dots' ? 'extra-rounded' : 'square' },
+    image: logoDataUrl || undefined,
+    imageOptions: { crossOrigin: 'anonymous', margin: 6, imageSize: 0.3 },
+    qrOptions: { errorCorrectionLevel: document.getElementById('eccLevel')?.value || 'M' },
+  });
+  q.append(el);
+  return q;
+}
+
+// ── 단일 QR 업데이트 ─────────────────────────────────
+function updateQR() {
+  const txt = document.getElementById('qrText').value.trim();
+  if (!txt) { document.getElementById('statusTxt').textContent = '내용을 입력하세요'; return; }
+  const size = parseInt(document.getElementById('sizeSlider').value);
+  qrMain = makeQR(txt, 'qrContainer', size);
+  document.getElementById('statusTxt').textContent = '';
+  applyFrame();
+  setTimeout(applyShapeMask, 250);
+}
+
+// ── QR 외형 마스킹 ────────────────────────────────────
+function setShape(type, btn) {
+  shapeType = type;
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  if (qrMain) setTimeout(applyShapeMask, 50);
+}
+
+function applyShapeMask() {
+  const container = document.getElementById('qrContainer');
+  const srcCanvas = container.querySelector('canvas');
+  if (!srcCanvas) return;
+
+  const prev = container.querySelector('.masked-canvas');
+  if (prev) prev.remove();
+  srcCanvas.style.display = '';
+  maskedCanvas = null;
+
+  if (shapeType === 'square') return;
+
+  const w = srcCanvas.width;
+  const h = srcCanvas.height;
+  const dst = document.createElement('canvas');
+  dst.width = w; dst.height = h;
+  dst.className = 'masked-canvas';
+  const ctx = dst.getContext('2d');
+
+  // Fill background color first
+  const bg = document.getElementById('bgColor').value;
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.save();
+  ctx.beginPath();
+  drawShapePath(ctx, w, h, shapeType);
+  ctx.clip();
+  ctx.drawImage(srcCanvas, 0, 0);
+  ctx.restore();
+
+  srcCanvas.style.display = 'none';
+  container.appendChild(dst);
+  maskedCanvas = dst;
+}
+
+function drawShapePath(ctx, w, h, shape) {
+  const cx = w / 2, cy = h / 2;
+  const r = Math.min(w, h) / 2 * 0.9;
+
+  if (shape === 'circle') {
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  } else if (shape === 'heart') {
+    // Heart: bottom tip up through two lobes
+    ctx.moveTo(cx, cy + r * 0.75);
+    ctx.bezierCurveTo(cx - r * 1.35, cy + r * 0.25, cx - r * 1.35, cy - r * 0.75, cx, cy - r * 0.2);
+    ctx.bezierCurveTo(cx + r * 1.35, cy - r * 0.75, cx + r * 1.35, cy + r * 0.25, cx, cy + r * 0.75);
+    ctx.closePath();
+  } else if (shape === 'star') {
+    const spikes = 5;
+    const outerR = r;
+    const innerR = r * 0.42;
+    let angle = -Math.PI / 2;
+    const step = Math.PI / spikes;
+    for (let i = 0; i < spikes; i++) {
+      ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
+      angle += step;
+      ctx.lineTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+      angle += step;
+    }
+    ctx.closePath();
+  } else if (shape === 'triangle') {
+    const tr = r * 1.05;
+    ctx.moveTo(cx, cy - tr);
+    ctx.lineTo(cx + tr * Math.sin(2 * Math.PI / 3), cy - tr * Math.cos(2 * Math.PI / 3));
+    ctx.lineTo(cx + tr * Math.sin(4 * Math.PI / 3), cy - tr * Math.cos(4 * Math.PI / 3));
+    ctx.closePath();
+  } else if (shape === 'diamond') {
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx + r * 0.72, cy);
+    ctx.lineTo(cx, cy + r);
+    ctx.lineTo(cx - r * 0.72, cy);
+    ctx.closePath();
+  }
+}
+
+function debounceUpdate() {
+  clearTimeout(debTimer);
+  debTimer = setTimeout(updateQR, 350);
+}
+
+// ── 크기 변경 ─────────────────────────────────────────
+function onSizeChange() {
+  const v = document.getElementById('sizeSlider').value;
+  document.getElementById('sizeVal').textContent = v + 'px';
+  debounceUpdate();
+}
+
+// ── 도트 스타일 ───────────────────────────────────────
+function setDot(type, btn) {
+  dotType = type;
+  document.querySelectorAll('.dot-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  debounceUpdate();
+}
+
+// ── 로고 ─────────────────────────────────────────────
+function onLogoChange(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    logoDataUrl = e.target.result;
+    const img = document.createElement('img');
+    img.src = logoDataUrl;
+    img.className = 'logo-preview';
+    const zone = document.getElementById('logoZone');
+    const existing = zone.querySelector('.logo-preview');
+    if (existing) existing.remove();
+    zone.appendChild(img);
+    document.getElementById('logoRemoveBtn').style.display = '';
+    document.getElementById('eccLevel').value = 'H';
+    updateQR();
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function removeLogo() {
+  logoDataUrl = null;
+  document.getElementById('logoInput').value = '';
+  const zone = document.getElementById('logoZone');
+  const img = zone.querySelector('.logo-preview');
+  if (img) img.remove();
+  document.getElementById('logoRemoveBtn').style.display = 'none';
+  updateQR();
+}
+
+// ── 프레임 ────────────────────────────────────────────
+function setFrame(type, btn) {
+  frameType = type;
+  document.querySelectorAll('.frame-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('frameTextWrap').style.display = type === 'none' ? 'none' : '';
+  debounceUpdate();
+}
+
+function applyFrame() {
+  const wrap = document.getElementById('qrWrap');
+  wrap.style.padding = '12px';
+  wrap.style.background = '#fff';
+  if (frameType === 'none') { wrap.style.border = 'none'; return; }
+  const txt = document.getElementById('frameText').value || '스캔해주세요';
+  if (frameType === 'scan') {
+    wrap.style.border = '3px solid ' + document.getElementById('fgColor').value;
+    wrap.style.borderRadius = '12px';
+    wrap.style.padding = '12px 12px 32px';
+    wrap.style.position = 'relative';
+    let label = wrap.querySelector('.frame-label');
+    if (!label) { label = document.createElement('div'); label.className = 'frame-label'; wrap.appendChild(label); }
+    label.textContent = txt;
+    Object.assign(label.style, {
+      position:'absolute', bottom:'8px', left:'0', right:'0',
+      textAlign:'center', fontSize:'13px', fontWeight:'700',
+      color: document.getElementById('fgColor').value,
+      fontFamily: 'var(--mono)', letterSpacing: '.06em'
+    });
+  } else if (frameType === 'box') {
+    wrap.style.border = '2px solid ' + document.getElementById('fgColor').value;
+    wrap.style.borderRadius = '4px';
+    const label = wrap.querySelector('.frame-label');
+    if (label) label.remove();
+  }
+}
+
+// ── 다운로드 ──────────────────────────────────────────
+function download(ext, target) {
+  // Use masked canvas for shaped QR (non-square, non-wifi, non-svg)
+  if (target !== 'wifi' && shapeType !== 'square' && maskedCanvas && ext !== 'svg') {
+    const mime = ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+    maskedCanvas.toBlob(blob => {
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(blob),
+        download: 'QR_DBLess.' + (ext === 'jpeg' ? 'jpg' : ext)
+      });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, mime);
+    return;
+  }
+  const q = target === 'wifi' ? qrWifi : qrMain;
+  if (!q) return;
+  q.download({ name: 'QR_DBLess', extension: ext });
+}
+
+// ── Wi-Fi ─────────────────────────────────────────────
+function setWifiSec(type, btn) {
+  wifiSec = type;
+  document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('wifiPwWrap').style.display = type === 'nopass' ? 'none' : '';
+  updateWifi();
+}
+
+function updateWifi() {
+  const ssid = document.getElementById('wifiSsid').value;
+  const pw   = document.getElementById('wifiPw')?.value || '';
+  const hidden = document.getElementById('wifiHidden').checked ? 'true' : 'false';
+  if (!ssid) { document.getElementById('statusTxt2').textContent = 'SSID를 입력하세요'; return; }
+  const data = `WIFI:T:${wifiSec === 'nopass' ? 'nopass' : wifiSec};S:${ssid};${wifiSec !== 'nopass' ? 'P:' + pw + ';' : ''}H:${hidden};;`;
+  const size = 300;
+  qrWifi = new QRCodeStyling({
+    width: size, height: size, data,
+    dotsOptions: { type: 'square', color: '#111110' },
+    backgroundOptions: { color: '#ffffff' },
+    qrOptions: { errorCorrectionLevel: 'M' },
+  });
+  document.getElementById('qrContainer2').innerHTML = '';
+  qrWifi.append(document.getElementById('qrContainer2'));
+  document.getElementById('statusTxt2').textContent = '';
+}
+
+// ── 일괄 생성 ─────────────────────────────────────────
+async function generateBulk() {
+  const lines = document.getElementById('bulkText').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return;
+  const list = document.getElementById('bulkList');
+  list.innerHTML = '';
+  bulkQRs = [];
+  for (const url of lines) {
+    const q = new QRCodeStyling({
+      width: 200, height: 200, data: url,
+      dotsOptions: { type: 'square', color: '#111110' },
+      backgroundOptions: { color: '#ffffff' },
+      qrOptions: { errorCorrectionLevel: 'M' },
+    });
+    const item = document.createElement('div');
+    item.className = 'bulk-item';
+    const container = document.createElement('div');
+    item.appendChild(container);
+    const label = document.createElement('p');
+    label.textContent = url;
+    item.appendChild(label);
+    list.appendChild(item);
+    q.append(container);
+    bulkQRs.push({ q, name: url.replace(/[^a-zA-Z0-9가-힣]/g, '_').slice(0, 40) });
+  }
+  document.getElementById('bulkZipBtn').style.display = '';
+}
+
+async function downloadBulkZip() {
+  if (!bulkQRs.length) return;
+  const zip = new JSZip();
+  for (const { q, name } of bulkQRs) {
+    const blob = await q.getRawData('png');
+    zip.file(name + '.png', blob);
+  }
+  const content = await zip.generateAsync({ type: 'blob' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(content), download: 'QR_일괄생성.zip'
+  });
+  a.click();
+}
+
+
+// ── 모드 전환 ────────────────────────────────────────
+function setMode(mode, btn) {
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('singleWrap').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('wifiWrap').classList.toggle('on', mode === 'wifi');
+  document.getElementById('bulkWrap').classList.toggle('on', mode === 'bulk');
+  if (mode === 'wifi' && !qrWifi) updateWifi();
+}
+
+// ── 초기화 ────────────────────────────────────────────
+updateQR();
+</script>
+</body>
+</html>
