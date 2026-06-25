@@ -334,6 +334,7 @@
 <!-- 라이브러리 -->
 <script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
 
 <script>
 // ── 상태 ──────────────────────────────────────────────
@@ -370,75 +371,100 @@ function updateQR() {
   const txt = document.getElementById('qrText').value.trim();
   if (!txt) { document.getElementById('statusTxt').textContent = '내용을 입력하세요'; return; }
   const size = parseInt(document.getElementById('sizeSlider').value);
-  qrMain = makeQR(txt, 'qrContainer', size);
-  document.getElementById('statusTxt').textContent = '';
-  applyFrame();
-  setTimeout(applyShapeMask, 250);
+  if (shapeType !== 'square') {
+    renderShapedQR(txt, size);
+  } else {
+    qrMain = makeQR(txt, 'qrContainer', size);
+    document.getElementById('statusTxt').textContent = '';
+    applyFrame();
+    maskedCanvas = null;
+  }
 }
 
-// ── QR 외형 마스킹 ────────────────────────────────────
+// ── QR 외형 선택 ──────────────────────────────────────
 function setShape(type, btn) {
   shapeType = type;
   document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  if (qrMain) setTimeout(applyShapeMask, 50);
+  debounceUpdate();
 }
 
-function applyShapeMask() {
-  const container = document.getElementById('qrContainer');
-  const srcCanvas = container.querySelector('canvas');
-  if (!srcCanvas) return;
+// ── 외형 QR 렌더링 (도트별 shape 판정) ───────────────
+function renderShapedQR(txt, size) {
+  try {
+    // qrcode-generator: typeNumber 0 = 자동, ECC H
+    const qr = qrcode(0, 'H');
+    qr.addData(txt);
+    qr.make();
 
-  const prev = container.querySelector('.masked-canvas');
-  if (prev) prev.remove();
-  srcCanvas.style.display = '';
-  maskedCanvas = null;
+    const N = qr.getModuleCount();
+    const container = document.getElementById('qrContainer');
+    container.innerHTML = '';
 
-  if (shapeType === 'square') return;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    container.appendChild(canvas);
 
-  const w = srcCanvas.width;
-  const h = srcCanvas.height;
-  const dst = document.createElement('canvas');
-  dst.width = w; dst.height = h;
-  dst.className = 'masked-canvas';
-  const ctx = dst.getContext('2d');
+    const ctx = canvas.getContext('2d');
+    const fgColor = document.getElementById('fgColor').value;
+    const bgColor = document.getElementById('bgColor').value;
+    const cell = size / N;
+    const cx = size / 2, cy = size / 2;
+    const r = size / 2 * 0.86;
 
-  // Fill background color first
-  const bg = document.getElementById('bgColor').value;
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+    // shape 판정용 임시 경로 (isPointInPath 활용)
+    const tmpCtx = document.createElement('canvas').getContext('2d');
+    tmpCtx.canvas.width = size; tmpCtx.canvas.height = size;
+    tmpCtx.beginPath();
+    buildShapePath(tmpCtx, size, shapeType, cx, cy, r);
 
-  ctx.save();
-  ctx.beginPath();
-  drawShapePath(ctx, w, h, shapeType);
-  ctx.clip();
-  ctx.drawImage(srcCanvas, 0, 0);
-  ctx.restore();
+    // 배경
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
 
-  srcCanvas.style.display = 'none';
-  container.appendChild(dst);
-  maskedCanvas = dst;
+    // 도트 렌더링
+    ctx.fillStyle = fgColor;
+    for (let row = 0; row < N; row++) {
+      for (let col = 0; col < N; col++) {
+        if (!qr.isDark(row, col)) continue;
+        const dotCx = (col + 0.5) * cell;
+        const dotCy = (row + 0.5) * cell;
+        // 파인더 패턴 & 타이밍 영역은 무조건 렌더링
+        if (isFinderArea(row, col, N) || tmpCtx.isPointInPath(dotCx, dotCy)) {
+          ctx.fillRect(col * cell, row * cell, cell, cell);
+        }
+      }
+    }
+
+    maskedCanvas = canvas;
+    qrMain = null;
+    document.getElementById('statusTxt').textContent = 'ECC H 적용 — 높은 오류 정정률';
+  } catch (e) {
+    document.getElementById('statusTxt').textContent = '생성 실패: ' + e.message;
+  }
 }
 
-function drawShapePath(ctx, w, h, shape) {
-  const cx = w / 2, cy = h / 2;
-  const r = Math.min(w, h) / 2 * 0.9;
+// 파인더 패턴 + 분리자 + 포맷 정보 영역 (인식에 필수)
+function isFinderArea(row, col, N) {
+  return (row <= 8 && col <= 8) ||          // 좌상단
+         (row <= 8 && col >= N - 8) ||       // 우상단
+         (row >= N - 8 && col <= 8);         // 좌하단
+}
 
+// shape 경로 빌드 (isPointInPath 판정용)
+function buildShapePath(ctx, size, shape, cx, cy, r) {
   if (shape === 'circle') {
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
   } else if (shape === 'heart') {
-    // Heart: bottom tip up through two lobes
     ctx.moveTo(cx, cy + r * 0.75);
     ctx.bezierCurveTo(cx - r * 1.35, cy + r * 0.25, cx - r * 1.35, cy - r * 0.75, cx, cy - r * 0.2);
     ctx.bezierCurveTo(cx + r * 1.35, cy - r * 0.75, cx + r * 1.35, cy + r * 0.25, cx, cy + r * 0.75);
     ctx.closePath();
   } else if (shape === 'star') {
-    const spikes = 5;
-    const outerR = r;
-    const innerR = r * 0.42;
+    const outerR = r, innerR = r * 0.42;
     let angle = -Math.PI / 2;
-    const step = Math.PI / spikes;
-    for (let i = 0; i < spikes; i++) {
+    const step = Math.PI / 5;
+    for (let i = 0; i < 5; i++) {
       ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
       angle += step;
       ctx.lineTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
