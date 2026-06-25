@@ -82,16 +82,6 @@
     }
     .frame-btn.on { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-light); }
 
-    /* QR 외형 */
-    .shape-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .shape-btn {
-      padding: 8px 4px; border: 1.5px solid var(--gray-300); border-radius: 8px;
-      background: none; cursor: pointer; font-size: 11px; color: var(--gray-700);
-      font-family: var(--mono); text-align: center; transition: all 150ms;
-    }
-    .shape-btn .shape-icon { font-size: 18px; display: block; margin-bottom: 2px; }
-    .shape-btn.on { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-light); }
-
     /* 미리보기 패널 */
     .preview-panel {
       position: sticky; top: 80px;
@@ -251,17 +241,6 @@
           </div>
         </div>
 
-        <div class="opt-section">
-          <span class="opt-label">QR 외형</span>
-          <div class="shape-opts">
-            <button class="shape-btn on" onclick="setShape('square',this)"><span class="shape-icon">⬛</span>사각형</button>
-            <button class="shape-btn" onclick="setShape('circle',this)"><span class="shape-icon">⭕</span>원</button>
-            <button class="shape-btn" onclick="setShape('heart',this)"><span class="shape-icon">❤️</span>하트</button>
-            <button class="shape-btn" onclick="setShape('star',this)"><span class="shape-icon">⭐</span>별</button>
-            <button class="shape-btn" onclick="setShape('triangle',this)"><span class="shape-icon">🔺</span>삼각형</button>
-            <button class="shape-btn" onclick="setShape('diamond',this)"><span class="shape-icon">🔷</span>다이아몬드</button>
-          </div>
-        </div>
       </div>
 
       <!-- 미리보기 -->
@@ -334,19 +313,16 @@
 <!-- 라이브러리 -->
 <script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
 
 <script>
 // ── 상태 ──────────────────────────────────────────────
 let dotType   = 'square';
 let frameType = 'none';
 let wifiSec   = 'WPA';
-let shapeType = 'square';
 let logoDataUrl = null;
 let qrMain = null, qrWifi = null;
 let bulkQRs = [];
 let debTimer = null;
-let maskedCanvas = null;
 
 // ── QR 인스턴스 생성 헬퍼 ────────────────────────────
 function makeQR(data, containerId, size) {
@@ -371,119 +347,9 @@ function updateQR() {
   const txt = document.getElementById('qrText').value.trim();
   if (!txt) { document.getElementById('statusTxt').textContent = '내용을 입력하세요'; return; }
   const size = parseInt(document.getElementById('sizeSlider').value);
-  if (shapeType !== 'square') {
-    renderShapedQR(txt, size);
-  } else {
-    qrMain = makeQR(txt, 'qrContainer', size);
-    document.getElementById('statusTxt').textContent = '';
-    applyFrame();
-    maskedCanvas = null;
-  }
-}
-
-// ── QR 외형 선택 ──────────────────────────────────────
-function setShape(type, btn) {
-  shapeType = type;
-  document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  debounceUpdate();
-}
-
-// ── 외형 QR 렌더링 (도트별 shape 판정) ───────────────
-function renderShapedQR(txt, size) {
-  try {
-    // qrcode-generator: typeNumber 0 = 자동, ECC H
-    const qr = qrcode(0, 'H');
-    qr.addData(txt);
-    qr.make();
-
-    const N = qr.getModuleCount();
-    const container = document.getElementById('qrContainer');
-    container.innerHTML = '';
-
-    const canvas = document.createElement('canvas');
-    canvas.width = size; canvas.height = size;
-    container.appendChild(canvas);
-
-    const ctx = canvas.getContext('2d');
-    const fgColor = document.getElementById('fgColor').value;
-    const bgColor = document.getElementById('bgColor').value;
-    const cell = size / N;
-    const cx = size / 2, cy = size / 2;
-    const r = size / 2 * 0.86;
-
-    // shape 판정용 임시 경로 (isPointInPath 활용)
-    const tmpCtx = document.createElement('canvas').getContext('2d');
-    tmpCtx.canvas.width = size; tmpCtx.canvas.height = size;
-    tmpCtx.beginPath();
-    buildShapePath(tmpCtx, size, shapeType, cx, cy, r);
-
-    // 배경
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, size, size);
-
-    // 도트 렌더링
-    ctx.fillStyle = fgColor;
-    for (let row = 0; row < N; row++) {
-      for (let col = 0; col < N; col++) {
-        if (!qr.isDark(row, col)) continue;
-        const dotCx = (col + 0.5) * cell;
-        const dotCy = (row + 0.5) * cell;
-        // 파인더 패턴 & 타이밍 영역은 무조건 렌더링
-        if (isFinderArea(row, col, N) || tmpCtx.isPointInPath(dotCx, dotCy)) {
-          ctx.fillRect(col * cell, row * cell, cell, cell);
-        }
-      }
-    }
-
-    maskedCanvas = canvas;
-    qrMain = null;
-    document.getElementById('statusTxt').textContent = 'ECC H 적용 — 높은 오류 정정률';
-  } catch (e) {
-    document.getElementById('statusTxt').textContent = '생성 실패: ' + e.message;
-  }
-}
-
-// 파인더 패턴 + 분리자 + 포맷 정보 영역 (인식에 필수)
-function isFinderArea(row, col, N) {
-  return (row <= 8 && col <= 8) ||          // 좌상단
-         (row <= 8 && col >= N - 8) ||       // 우상단
-         (row >= N - 8 && col <= 8);         // 좌하단
-}
-
-// shape 경로 빌드 (isPointInPath 판정용)
-function buildShapePath(ctx, size, shape, cx, cy, r) {
-  if (shape === 'circle') {
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  } else if (shape === 'heart') {
-    ctx.moveTo(cx, cy + r * 0.75);
-    ctx.bezierCurveTo(cx - r * 1.35, cy + r * 0.25, cx - r * 1.35, cy - r * 0.75, cx, cy - r * 0.2);
-    ctx.bezierCurveTo(cx + r * 1.35, cy - r * 0.75, cx + r * 1.35, cy + r * 0.25, cx, cy + r * 0.75);
-    ctx.closePath();
-  } else if (shape === 'star') {
-    const outerR = r, innerR = r * 0.42;
-    let angle = -Math.PI / 2;
-    const step = Math.PI / 5;
-    for (let i = 0; i < 5; i++) {
-      ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
-      angle += step;
-      ctx.lineTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
-      angle += step;
-    }
-    ctx.closePath();
-  } else if (shape === 'triangle') {
-    const tr = r * 1.05;
-    ctx.moveTo(cx, cy - tr);
-    ctx.lineTo(cx + tr * Math.sin(2 * Math.PI / 3), cy - tr * Math.cos(2 * Math.PI / 3));
-    ctx.lineTo(cx + tr * Math.sin(4 * Math.PI / 3), cy - tr * Math.cos(4 * Math.PI / 3));
-    ctx.closePath();
-  } else if (shape === 'diamond') {
-    ctx.moveTo(cx, cy - r);
-    ctx.lineTo(cx + r * 0.72, cy);
-    ctx.lineTo(cx, cy + r);
-    ctx.lineTo(cx - r * 0.72, cy);
-    ctx.closePath();
-  }
+  qrMain = makeQR(txt, 'qrContainer', size);
+  document.getElementById('statusTxt').textContent = '';
+  applyFrame();
 }
 
 function debounceUpdate() {
@@ -574,19 +440,6 @@ function applyFrame() {
 
 // ── 다운로드 ──────────────────────────────────────────
 function download(ext, target) {
-  // Use masked canvas for shaped QR (non-square, non-wifi, non-svg)
-  if (target !== 'wifi' && shapeType !== 'square' && maskedCanvas && ext !== 'svg') {
-    const mime = ext === 'jpeg' ? 'image/jpeg' : 'image/png';
-    maskedCanvas.toBlob(blob => {
-      const a = Object.assign(document.createElement('a'), {
-        href: URL.createObjectURL(blob),
-        download: 'QR_DBLess.' + (ext === 'jpeg' ? 'jpg' : ext)
-      });
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    }, mime);
-    return;
-  }
   const q = target === 'wifi' ? qrWifi : qrMain;
   if (!q) return;
   q.download({ name: 'QR_DBLess', extension: ext });
