@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한화 CI 생성기 — DBLess</title>
+  <link rel="stylesheet" href="dbless-common.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    .wrap { max-width: 1160px; padding: 40px 48px 96px; margin: 0 auto; }
+
+    .ci-layout { display: grid; grid-template-columns: 340px 1fr; gap: 40px; align-items: start; }
+
+    /* 옵션 공통 */
+    .opt-section { margin-bottom: 22px; }
+    .opt-label {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--gray-500);
+      margin-bottom: 10px; display: block;
+    }
+    .opt-input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-300);
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+      color: var(--black); background: var(--white); outline: none;
+      transition: border-color 150ms; box-sizing: border-box;
+    }
+    .opt-input:focus { border-color: var(--indigo); }
+
+    /* 버튼 그룹 */
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn-seg {
+      padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--gray-300); background: none; color: var(--gray-500);
+      cursor: pointer; transition: all 150ms; font-family: inherit; white-space: nowrap;
+    }
+    .btn-seg.on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+    .btn-seg:hover:not(.on) { border-color: var(--gray-500); color: var(--black); }
+
+    /* 색상 세트 버튼 */
+    .color-set-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--gray-300); background: none; color: var(--gray-500);
+      cursor: pointer; transition: all 150ms; font-family: inherit;
+    }
+    .color-set-btn.on { border-color: var(--indigo); color: var(--black); background: #f0f2ff; }
+    .color-set-swatch {
+      width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15);
+    }
+
+    /* 배경 선택 */
+    .bg-btns { display: flex; gap: 8px; }
+    .bg-btn {
+      width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--gray-300);
+      cursor: pointer; transition: border-color 150ms;
+    }
+    .bg-btn.on { border-color: var(--indigo); }
+    .bg-btn-white { background: #ffffff; }
+    .bg-btn-dark  { background: #1a1a1a; }
+    .bg-btn-trans { background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 12px 12px; }
+
+    /* 파일 드롭존 */
+    .drop-zone {
+      border: 1.5px dashed var(--gray-300); border-radius: 10px;
+      padding: 14px 14px; text-align: center; cursor: pointer;
+      transition: all 150ms; position: relative; background: var(--white);
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--indigo); background: #f5f6ff; }
+    .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+    .drop-zone-icon { font-size: 20px; margin-bottom: 4px; }
+    .drop-zone-text { font-size: 12px; color: var(--gray-500); line-height: 1.5; }
+    .drop-zone-text strong { color: var(--indigo); }
+    .drop-zone-loaded {
+      font-size: 12px; color: #16a34a; font-weight: 600;
+      display: flex; align-items: center; gap: 6px; justify-content: center;
+    }
+    .drop-zone-loaded .clear-btn {
+      color: var(--gray-400); cursor: pointer; font-size: 14px; line-height: 1;
+      border: none; background: none; padding: 0 2px;
+    }
+    .drop-zone-loaded .clear-btn:hover { color: #dc2626; }
+
+    /* 구분선 */
+    .section-divider { border: none; border-top: 1px solid var(--gray-200); margin: 8px 0 20px; }
+
+    /* 미리보기 패널 */
+    .preview-panel {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 20px;
+    }
+    .preview-canvas-wrap {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 360px; border-radius: 12px; overflow: hidden; transition: background 200ms;
+    }
+    .preview-canvas-wrap.bg-white { background: #ffffff; }
+    .preview-canvas-wrap.bg-dark  { background: #1a1a1a; }
+    .preview-canvas-wrap.bg-trans {
+      background: repeating-conic-gradient(#bbb 0% 25%, #e8e8e8 0% 50%) 0 0 / 20px 20px;
+    }
+    #previewCanvas { max-width: 100%; max-height: 420px; display: block; }
+
+    /* 다운로드 버튼 */
+    .dl-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    .dl-btn {
+      padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      border: 1.5px solid var(--gray-300); background: none; color: var(--gray-600);
+      cursor: pointer; transition: all 150ms; font-family: inherit;
+    }
+    .dl-btn:hover { border-color: var(--indigo); color: var(--indigo); }
+    .dl-btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+    .dl-btn.primary:hover { background: #3730a3; }
+
+    /* SVG 분리기 */
+    .splitter-section {
+      margin-bottom: 48px; padding-bottom: 40px; border-bottom: 1px solid var(--gray-200);
+    }
+    .splitter-section h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .splitter-section .sub { font-size: 13px; color: var(--gray-500); margin-bottom: 20px; }
+    .splitter-layout { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
+    .split-col { }
+    .split-col-label {
+      font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--gray-500); margin-bottom: 8px; display: block;
+    }
+    .split-preview {
+      background: #f9f9f9; border: 1px solid var(--gray-200); border-radius: 10px;
+      padding: 16px; display: flex; align-items: center; justify-content: center;
+      min-height: 140px; overflow: hidden;
+    }
+    .split-preview svg { max-width: 100%; max-height: 130px; }
+    .split-preview-placeholder { color: var(--gray-300); font-size: 13px; }
+    .split-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .split-btn {
+      padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid var(--gray-300); background: none; color: var(--gray-600);
+      cursor: pointer; transition: all 150ms; font-family: inherit;
+    }
+    .split-btn:hover { border-color: var(--indigo); color: var(--indigo); }
+    .split-btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+    .split-btn.primary:hover { background: #3730a3; }
+    .split-status { font-size: 12px; color: var(--gray-400); margin-top: 8px; }
+    .split-status.ok { color: #16a34a; font-weight: 600; }
+
+    /* 전체 조합 */
+    .all-section { margin-top: 48px; padding-top: 40px; border-top: 1px solid var(--gray-200); }
+    .all-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .all-section p { font-size: 14px; color: var(--gray-500); margin-bottom: 20px; }
+    .all-combos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .combo-card {
+      border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden;
+      cursor: pointer; transition: all 150ms;
+    }
+    .combo-card:hover { border-color: var(--indigo); box-shadow: 0 0 0 3px #e0e3ff; }
+    .combo-thumb {
+      display: flex; justify-content: center; align-items: center;
+      height: 110px; padding: 10px;
+    }
+    .combo-thumb canvas { max-width: 100%; max-height: 100%; }
+    .combo-info {
+      padding: 7px 12px; border-top: 1px solid var(--gray-200);
+      font-size: 10px; color: var(--gray-500); font-family: var(--mono);
+    }
+
+    /* 상태 배지 */
+    .status-badge {
+      display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: 100px; margin-left: 6px; vertical-align: middle;
+    }
+    .badge-ok  { background: #dcfce7; color: #166534; }
+    .badge-fb  { background: #fef9c3; color: #854d0e; }
+  </style>
+</head>
+<body>
+
+<nav class="db-nav">
+  <a class="db-nav-logo" href="index.html"><em>DB</em>Less</a>
+  <div class="db-nav-links">
+    <a href="공문생성기.html">공문생성기</a>
+    <a href="멀티메일.html">대량메일발송</a>
+    <a href="pdf편집기.html">PDF편집기</a>
+    <a href="누끼따기.html">누끼따기</a>
+    <a href="timer.html">타이머</a>
+    <a href="명찰생성기.html">명찰생성기</a>
+    <a href="qr생성기.html">QR생성기</a>
+    <a href="CI생성기.html" class="active">CI생성기</a>
+  </div>
+</nav>
+
+<header class="db-page-header">
+  <p class="db-page-eyebrow">08 / CI생성기</p>
+  <h1 class="db-page-title">한화 CI 생성기</h1>
+  <p class="db-page-desc">트라이서클 + 회사명 조합 CI를 상하·좌우 레이아웃으로 생성하고 PNG·SVG로 다운로드합니다.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- ── SVG 분리기 ── -->
+  <div class="splitter-section">
+    <h2>Step 1 — SVG 파일 분리</h2>
+    <p class="sub">전체 CI SVG 파일을 업로드하면 트라이서클과 텍스트를 자동으로 분리합니다.</p>
+
+    <div class="splitter-layout">
+      <!-- 원본 업로드 -->
+      <div class="split-col">
+        <span class="split-col-label">원본 SVG</span>
+        <div class="drop-zone" id="splitDropZone" style="min-height:140px">
+          <input type="file" accept=".svg,image/svg+xml" id="splitFileInput">
+          <div id="splitDropContent">
+            <div class="drop-zone-icon">📂</div>
+            <div class="drop-zone-text">전체 CI SVG 파일을<br><strong>드래그 또는 클릭</strong>하여 업로드</div>
+          </div>
+        </div>
+        <div class="split-status" id="splitStatus"></div>
+      </div>
+
+      <!-- 트라이서클 -->
+      <div class="split-col">
+        <span class="split-col-label">트라이서클 (심볼)</span>
+        <div class="split-preview" id="symPreview">
+          <span class="split-preview-placeholder">업로드 후 표시</span>
+        </div>
+        <div class="split-actions">
+          <button class="split-btn primary" id="symUseBtn" style="display:none" onclick="useSymbolSVG()">CI생성기에서 사용</button>
+          <button class="split-btn" id="symDlBtn" style="display:none" onclick="downloadSplitSVG('symbol')">SVG 저장</button>
+        </div>
+      </div>
+
+      <!-- 텍스트 -->
+      <div class="split-col">
+        <span class="split-col-label">텍스트 (로고타입)</span>
+        <div class="split-preview" id="txtPreview">
+          <span class="split-preview-placeholder">업로드 후 표시</span>
+        </div>
+        <div class="split-actions">
+          <button class="split-btn" id="txtDlBtn" style="display:none" onclick="downloadSplitSVG('text')">SVG 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ci-layout">
+
+    <!-- ── 옵션 패널 ── -->
+    <div>
+
+      <!-- 파일 설정 -->
+      <div class="opt-section">
+        <span class="opt-label">
+          트라이서클 SVG
+          <span class="status-badge" id="svgBadge">파일 없음 (기본)</span>
+        </span>
+        <div class="drop-zone" id="svgDropZone">
+          <input type="file" accept=".svg,image/svg+xml" id="svgFileInput">
+          <div id="svgDropContent">
+            <div class="drop-zone-icon">🎨</div>
+            <div class="drop-zone-text">
+              공식 한화 트라이서클 <strong>SVG 파일</strong>을 드래그하거나 클릭하여 업로드<br>
+              <span style="font-size:11px;color:#aaa">미업로드 시 내장 드로잉 사용</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">
+          HanwhaR 폰트
+          <span class="status-badge" id="fontBadge">미설치 (Poppins 대체)</span>
+        </span>
+        <div class="drop-zone" id="fontDropZone">
+          <input type="file" accept=".ttf,.otf,.woff,.woff2" id="fontFileInput">
+          <div id="fontDropContent">
+            <div class="drop-zone-icon">🔤</div>
+            <div class="drop-zone-text">
+              <strong>HanwhaR.ttf</strong> (또는 .otf/.woff)를 드래그하거나 클릭<br>
+              <span style="font-size:11px;color:#aaa">파일을 여기 올리면 즉시 적용됩니다</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <div class="opt-section">
+        <span class="opt-label">회사명</span>
+        <input class="opt-input" id="companyInput" type="text" value="Hanwha" placeholder="Hanwha" oninput="scheduleRender()">
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">언어</span>
+        <div class="btn-group">
+          <button class="btn-seg on" onclick="setState('lang','en',this)">영문 (Latin)</button>
+          <button class="btn-seg" onclick="setState('lang','ko',this)">한글</button>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">조합 형식</span>
+        <div class="btn-group">
+          <button class="btn-seg on" onclick="setState('layout','vertical',this)">상하 조합</button>
+          <button class="btn-seg" onclick="setState('layout','horizontal',this)">좌우 조합</button>
+          <button class="btn-seg" onclick="setState('layout','symbol',this)">심볼만</button>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">트라이서클 색상</span>
+        <div class="btn-group" id="tcColorBtns">
+          <button class="color-set-btn on" onclick="setState('tcColor','original',this)">
+            <span class="color-set-swatch" style="background:linear-gradient(135deg,#F37321 50%,#FBB584 50%)"></span>원본
+          </button>
+          <button class="color-set-btn" onclick="setState('tcColor','white',this)">
+            <span class="color-set-swatch" style="background:#fff"></span>흰색
+          </button>
+          <button class="color-set-btn" onclick="setState('tcColor','black',this)">
+            <span class="color-set-swatch" style="background:#000"></span>검정
+          </button>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">글자 색상</span>
+        <div class="btn-group" id="textColorBtns">
+          <button class="btn-seg on" onclick="setState('textColor','#000000',this)">검정</button>
+          <button class="btn-seg" onclick="setState('textColor','#ffffff',this)">흰색</button>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">미리보기 배경</span>
+        <div class="bg-btns">
+          <button class="bg-btn bg-btn-white on" title="흰색" onclick="setBg('bg-white',this)"></button>
+          <button class="bg-btn bg-btn-dark"  title="검정" onclick="setBg('bg-dark',this)"></button>
+          <button class="bg-btn bg-btn-trans" title="투명" onclick="setBg('bg-trans',this)"></button>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <span class="opt-label">다운로드 해상도</span>
+        <div class="btn-group" id="resBtns">
+          <button class="btn-seg" onclick="setState('res',2,this)">2×</button>
+          <button class="btn-seg on" onclick="setState('res',4,this)">4×</button>
+          <button class="btn-seg" onclick="setState('res',8,this)">8× (대형)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 미리보기 패널 ── -->
+    <div class="preview-panel">
+      <div class="preview-canvas-wrap bg-white" id="previewWrap">
+        <canvas id="previewCanvas"></canvas>
+      </div>
+      <div class="dl-btns">
+        <button class="dl-btn primary" onclick="downloadPNG()">PNG 다운로드</button>
+        <button class="dl-btn" onclick="downloadSVG()">SVG 다운로드</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 전체 조합 ── -->
+  <div class="all-section">
+    <h2>전체 조합 일괄 생성</h2>
+    <p>현재 회사명·언어로 모든 색상·레이아웃 조합을 한번에 생성합니다.</p>
+    <div class="dl-btns" style="margin-bottom:28px">
+      <button class="dl-btn primary" onclick="downloadAllZip()">모든 조합 ZIP 다운로드</button>
+      <button class="dl-btn" onclick="renderAllThumbs()">조합 미리보기</button>
+    </div>
+    <div class="all-combos" id="allCombos"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ── 전역 상태 ────────────────────────────────────────────
+const S = { lang: 'en', layout: 'vertical', tcColor: 'original', textColor: '#000000', res: 4 };
+
+let customSvgContent = null;  // 사용자 업로드 SVG 원본
+let svgNaturalW = 0, svgNaturalH = 0;  // SVG 기준 크기
+let hanwhaFontLoaded = false;  // HanwhaR 폰트 로드 여부
+
+// ── 폰트 설정 ─────────────────────────────────────────────
+function fontFamily(lang) {
+  if (hanwhaFontLoaded) return "'HanwhaR', sans-serif";
+  return lang === 'ko'
+    ? "'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif"
+    : "'Poppins', Arial, sans-serif";
+}
+function fontWeight(lang) { return lang === 'ko' ? '700' : '500'; }
+
+// ── 상태 변경 ─────────────────────────────────────────────
+function setState(key, val, btn) {
+  S[key] = val;
+  if (btn) {
+    btn.parentElement.querySelectorAll('.btn-seg, .color-set-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+  }
+  scheduleRender();
+}
+function setBg(cls, btn) {
+  document.getElementById('previewWrap').className = 'preview-canvas-wrap ' + cls;
+  document.querySelectorAll('.bg-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+document.getElementById('companyInput').addEventListener('input', scheduleRender);
+
+// ── 렌더 스케줄러 ─────────────────────────────────────────
+let renderTimer = null;
+function scheduleRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => render(), 30);
+}
+
+// ── SVG 파일 업로드 ────────────────────────────────────────
+function setupDropZone(zoneId, inputId, acceptFn) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+
+  input.addEventListener('change', () => { if (input.files[0]) acceptFn(input.files[0]); });
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) acceptFn(file);
+  });
+}
+
+function loadSvgFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    svgProportions = null; // 직접 업로드 시 참조 비율 초기화
+    customSvgContent = e.target.result;
+    // SVG 자연 크기 파악
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(customSvgContent, 'image/svg+xml');
+    const svg = doc.documentElement;
+    const vb = svg.getAttribute('viewBox');
+    if (vb) {
+      const parts = vb.trim().split(/[\s,]+/);
+      svgNaturalW = parseFloat(parts[2]) || 200;
+      svgNaturalH = parseFloat(parts[3]) || 200;
+    } else {
+      svgNaturalW = parseFloat(svg.getAttribute('width')) || 200;
+      svgNaturalH = parseFloat(svg.getAttribute('height')) || 200;
+    }
+
+    // UI 업데이트
+    document.getElementById('svgBadge').textContent = '로드됨';
+    document.getElementById('svgBadge').className = 'status-badge badge-ok';
+    const fname = file.name;
+    document.getElementById('svgDropContent').innerHTML =
+      `<div class="drop-zone-loaded">✓ ${fname} <button class="clear-btn" onclick="clearSvg(event)">✕</button></div>`;
+    scheduleRender();
+  };
+  reader.readAsText(file);
+}
+
+function clearSvg(e) {
+  e.stopPropagation();
+  customSvgContent = null;
+  svgProportions = null;
+  document.getElementById('svgBadge').textContent = '파일 없음 (기본)';
+  document.getElementById('svgBadge').className = 'status-badge badge-fb';
+  document.getElementById('svgDropContent').innerHTML =
+    `<div class="drop-zone-icon">🎨</div>
+    <div class="drop-zone-text">공식 한화 트라이서클 <strong>SVG 파일</strong>을 드래그하거나 클릭하여 업로드<br>
+    <span style="font-size:11px;color:#aaa">미업로드 시 내장 드로잉 사용</span></div>`;
+  scheduleRender();
+}
+
+async function loadFontFile(file) {
+  try {
+    const ab = await file.arrayBuffer();
+    const ff = new FontFace('HanwhaR', ab);
+    await ff.load();
+    document.fonts.add(ff);
+    hanwhaFontLoaded = true;
+    document.getElementById('fontBadge').textContent = '로드됨';
+    document.getElementById('fontBadge').className = 'status-badge badge-ok';
+    const fname = file.name;
+    document.getElementById('fontDropContent').innerHTML =
+      `<div class="drop-zone-loaded">✓ ${fname} <button class="clear-btn" onclick="clearFont(event)">✕</button></div>`;
+    scheduleRender();
+  } catch(err) {
+    alert('폰트 파일 로드 실패: ' + err.message);
+  }
+}
+
+function clearFont(e) {
+  e.stopPropagation();
+  hanwhaFontLoaded = false;
+  document.getElementById('fontBadge').textContent = '미설치 (Poppins 대체)';
+  document.getElementById('fontBadge').className = 'status-badge badge-fb';
+  document.getElementById('fontDropContent').innerHTML =
+    `<div class="drop-zone-icon">🔤</div>
+    <div class="drop-zone-text"><strong>HanwhaR.ttf</strong> (또는 .otf/.woff)를 드래그하거나 클릭<br>
+    <span style="font-size:11px;color:#aaa">파일을 여기 올리면 즉시 적용됩니다</span></div>`;
+  scheduleRender();
+}
+
+setupDropZone('svgDropZone',  'svgFileInput',  loadSvgFile);
+setupDropZone('fontDropZone', 'fontFileInput', loadFontFile);
+
+// ── SVG 색상 변경 (흰/검정 버전) ──────────────────────────
+function colorizesvg(svgStr, tcColor) {
+  if (tcColor === 'original') return svgStr;
+  const color = tcColor === 'white' ? '#ffffff' : '#000000';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgStr, 'image/svg+xml');
+  const root = doc.documentElement;
+
+  function recolor(el) {
+    const fill = el.getAttribute('fill');
+    if (fill && fill !== 'none') el.setAttribute('fill', color);
+    const stroke = el.getAttribute('stroke');
+    if (stroke && stroke !== 'none') el.setAttribute('stroke', color);
+    const style = el.getAttribute('style');
+    if (style) {
+      el.setAttribute('style',
+        style.replace(/fill\s*:\s*(?!none)[^;]+/g, 'fill:' + color)
+             .replace(/stroke\s*:\s*(?!none)[^;]+/g, 'stroke:' + color)
+      );
+    }
+    Array.from(el.children).forEach(recolor);
+  }
+  recolor(root);
+  return new XMLSerializer().serializeToString(root);
+}
+
+// ── SVG → Image (Promise) ─────────────────────────────────
+function svgToImg(svgStr) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ── 내장 트라이서클 드로잉 (SVG 없을 때 폴백) ───────────────
+// 브랜드가이드 그리드 기반 추정값
+const FALLBACK_RINGS = [
+  { cx: 110, cy: 82, rx: 100, ry: 56, angleDeg: -10, sw: 13, oc: '#F37321' },
+  { cx: 162, cy: 132, rx: 86, ry: 50, angleDeg: 20,  sw: 11, oc: '#F89B6C' },
+  { cx:  98, cy: 176, rx: 72, ry: 44, angleDeg: -28, sw:  9, oc: '#FBB584' },
+];
+const FB_SYM_W = 260;
+const FB_SYM_H = 260;
+
+function ringColors(tcColor) {
+  if (tcColor === 'white') return ['#ffffff','#ffffff','#ffffff'];
+  if (tcColor === 'black') return ['#000000','#000000','#000000'];
+  return FALLBACK_RINGS.map(r => r.oc);
+}
+
+function drawFallbackTricircle(ctx, ox, oy, scale, colors) {
+  for (let i = FALLBACK_RINGS.length - 1; i >= 0; i--) {
+    const r = FALLBACK_RINGS[i];
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(
+      ox + r.cx * scale, oy + r.cy * scale,
+      r.rx * scale, r.ry * scale,
+      r.angleDeg * Math.PI / 180, 0, 2 * Math.PI
+    );
+    ctx.strokeStyle = colors[i];
+    ctx.lineWidth = r.sw * scale;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── CI 레이아웃 계산 ──────────────────────────────────────
+// CAP_HEIGHT_RATIO: 폰트 크기 대비 대문자 시각적 높이 비율 (HanwhaR/Poppins 기준)
+const CAP_HEIGHT_RATIO = 0.72;
+
+function calcLayout(layout, companyName, lang, baseScale, symW, symH) {
+  const sw = symW * baseScale;
+  const sh = symH * baseScale;
+  const pH = 20 * baseScale;
+  const pV = 20 * baseScale;
+
+  if (layout === 'symbol') {
+    const pad = 16 * baseScale;
+    return { totalW: sw + pad*2, totalH: sh + pad*2, symX: pad, symY: pad, textX: null };
+  }
+
+  if (svgProportions) {
+    // 참조 SVG에서 추출한 정확한 비율 사용
+    const propScale = sh / svgProportions.symH;
+    const refTxtH = svgProportions.txtH * propScale;          // 실제 텍스트 시각 높이 (px)
+    const fontSize = Math.round(refTxtH / CAP_HEIGHT_RATIO);  // 폰트 크기로 역산
+    const hGapPx   = svgProportions.hGap * propScale;         // 수평 간격
+
+    if (layout === 'horizontal') {
+      // 텍스트 수직 중앙 = 심볼 수직 중앙 (참조 SVG 기준)
+      const symCenterY = pV + sh / 2;
+      const textY = symCenterY + refTxtH * 0.5; // baseline = center + cap_height/2
+      return {
+        totalW: pH + sw + hGapPx + 9999, // 나중에 보정
+        totalH: sh + pV * 2,
+        symX: pH, symY: pV,
+        textX: pH + sw + hGapPx,
+        textY, fontSize, textAlign: 'left', pH, hGapPx,
+      };
+    }
+    // vertical: 심볼 아래에 텍스트 배치, 간격은 심볼 높이의 8%
+    const vGap = sh * 0.08;
+    const textY = pV + sh + vGap + fontSize * 0.85;
+    return {
+      totalW: sw + pH * 2,
+      totalH: pV + sh + vGap + fontSize * 1.1 + pV,
+      symX: pH, symY: pV,
+      textX: (sw + pH * 2) / 2,
+      textY, fontSize, textAlign: 'center',
+    };
+  }
+
+  // ── 폴백 (참조 SVG 없을 때) ──
+  if (layout === 'vertical') {
+    const gap = 18 * baseScale;
+    const fs = Math.round(52 * baseScale);
+    return {
+      totalW: sw + pH*2, totalH: sh + gap + fs * 1.3 + pV*2,
+      symX: pH, symY: pV,
+      textX: (sw + pH*2) / 2, textY: pV + sh + gap + fs * 0.85,
+      fontSize: fs, textAlign: 'center',
+    };
+  }
+  // horizontal 폴백
+  const gap = 24 * baseScale;
+  const fs = Math.round(60 * baseScale);
+  return {
+    totalW: sw + gap + 9999, totalH: sh + pV*2,
+    symX: pH, symY: pV,
+    textX: pH + sw + gap, textY: pV + sh/2 + fs * 0.38,
+    fontSize: fs, textAlign: 'left', pH, hGapPx: gap,
+  };
+}
+
+// ── CI 렌더링 (async) ─────────────────────────────────────
+async function renderCI(canvas, {
+  companyName, lang, layout, tcColor, textColor, bgColor, baseScale, symImg,
+}) {
+  const ctx = canvas.getContext('2d');
+
+  // 심볼 크기 결정
+  const symW = symImg ? (svgNaturalW || 200) : FB_SYM_W;
+  const symH = symImg ? (svgNaturalH || 200) : FB_SYM_H;
+
+  const dim = calcLayout(layout, companyName, lang, baseScale, symW, symH);
+
+  // horizontal: 텍스트 너비 보정
+  if (layout === 'horizontal') {
+    ctx.font = `${fontWeight(lang)} ${dim.fontSize}px ${fontFamily(lang)}`;
+    const tw = ctx.measureText(companyName).width;
+    const hGapPx = dim.hGapPx ?? (24 * baseScale);
+    dim.totalW = dim.pH + symW * baseScale + hGapPx + tw + dim.pH;
+    dim.textX  = dim.pH + symW * baseScale + hGapPx;
+  }
+
+  canvas.width  = Math.ceil(dim.totalW);
+  canvas.height = Math.ceil(dim.totalH);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (bgColor) {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // 심볼 그리기
+  const sw = symW * baseScale;
+  const sh = symH * baseScale;
+
+  if (symImg) {
+    ctx.drawImage(symImg, dim.symX, dim.symY, sw, sh);
+  } else {
+    drawFallbackTricircle(ctx, dim.symX, dim.symY, baseScale, ringColors(tcColor));
+  }
+
+  // 텍스트
+  if (layout !== 'symbol' && companyName) {
+    ctx.font = `${fontWeight(lang)} ${dim.fontSize}px ${fontFamily(lang)}`;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = dim.textAlign;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(companyName, dim.textX, dim.textY);
+  }
+}
+
+// ── 심볼 이미지 준비 ──────────────────────────────────────
+async function getSymbolImg(tcColor) {
+  if (!customSvgContent) return null;
+  const colored = colorizesvg(customSvgContent, tcColor);
+  try { return await svgToImg(colored); } catch { return null; }
+}
+
+// ── 미리보기 렌더 ─────────────────────────────────────────
+async function render() {
+  const canvas = document.getElementById('previewCanvas');
+  const company = document.getElementById('companyInput').value.trim() || 'Hanwha';
+  const symImg = await getSymbolImg(S.tcColor);
+  await renderCI(canvas, {
+    companyName: company, lang: S.lang, layout: S.layout,
+    tcColor: S.tcColor, textColor: S.textColor, bgColor: null,
+    baseScale: 1.6, symImg,
+  });
+}
+
+// ── PNG 다운로드 ───────────────────────────────────────────
+async function downloadPNG() {
+  const company = document.getElementById('companyInput').value.trim() || 'Hanwha';
+  const wrap = document.getElementById('previewWrap');
+  let bgColor = null;
+  if (wrap.classList.contains('bg-white')) bgColor = '#ffffff';
+  else if (wrap.classList.contains('bg-dark'))  bgColor = '#1a1a1a';
+
+  const canvas = document.createElement('canvas');
+  const symImg = await getSymbolImg(S.tcColor);
+  await renderCI(canvas, {
+    companyName: company, lang: S.lang, layout: S.layout,
+    tcColor: S.tcColor, textColor: S.textColor, bgColor,
+    baseScale: S.res, symImg,
+  });
+
+  const layoutLabel = { vertical:'상하', horizontal:'좌우', symbol:'심볼' }[S.layout];
+  const tcLabel     = { original:'Orange', white:'White', black:'Black' }[S.tcColor];
+  const txtLabel    = S.textColor === '#000000' ? 'TextBlack' : 'TextWhite';
+  const fname = `${company}_CI_${layoutLabel}_TC${tcLabel}_${txtLabel}.png`;
+
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+  });
+}
+
+// ── SVG 다운로드 ───────────────────────────────────────────
+function downloadSVG() {
+  const company = document.getElementById('companyInput').value.trim() || 'Hanwha';
+  let svgOut = '';
+
+  if (customSvgContent) {
+    // SVG 기반
+    const symSvg = colorizesvg(customSvgContent, S.tcColor);
+    const symW = svgNaturalW || 200, symH = svgNaturalH || 200;
+    const dim = calcLayout(S.layout, company, S.lang, 1, symW, symH);
+
+    // 텍스트 요소 구성
+    let textEl = '';
+    if (S.layout !== 'symbol' && company) {
+      const anchor = dim.textAlign === 'center' ? 'middle' : 'start';
+      const ff = hanwhaFontLoaded
+        ? "HanwhaR, sans-serif"
+        : (S.lang === 'ko' ? "'Noto Sans KR', sans-serif" : "Poppins, Arial, sans-serif");
+      textEl = `<text x="${dim.textX?.toFixed(1)}" y="${dim.textY?.toFixed(1)}"
+        font-family="${ff}" font-weight="${fontWeight(S.lang)}"
+        font-size="${dim.fontSize?.toFixed(1)}" fill="${S.textColor}"
+        text-anchor="${anchor}">${escXML(company)}</text>`;
+    }
+
+    // 심볼 SVG를 <image>로 포함 (data URI)
+    const b64 = btoa(unescape(encodeURIComponent(symSvg)));
+    const imgEl = `<image href="data:image/svg+xml;base64,${b64}"
+      x="${dim.symX}" y="${dim.symY}" width="${symW}" height="${symH}"/>`;
+
+    // totalW/H 추정 (수평 레이아웃은 정확하지 않음)
+    svgOut = `<svg xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 ${(dim.totalW || 400).toFixed(0)} ${dim.totalH.toFixed(0)}"
+      width="${(dim.totalW || 400).toFixed(0)}" height="${dim.totalH.toFixed(0)}">
+      ${imgEl}${textEl}
+    </svg>`;
+  } else {
+    // 폴백 SVG (내장 드로잉)
+    const symW = FB_SYM_W, symH = FB_SYM_H;
+    const dim = calcLayout(S.layout, company, S.lang, 1, symW, symH);
+    const colors = ringColors(S.tcColor);
+    const rings = FALLBACK_RINGS.map((r, i) => {
+      const cx = (dim.symX + r.cx).toFixed(2);
+      const cy = (dim.symY + r.cy).toFixed(2);
+      return `<ellipse cx="${cx}" cy="${cy}" rx="${r.rx}" ry="${r.ry}"
+        transform="rotate(${r.angleDeg} ${cx} ${cy})"
+        fill="none" stroke="${colors[i]}" stroke-width="${r.sw}"/>`;
+    });
+    let textEl = '';
+    if (S.layout !== 'symbol' && company) {
+      const anchor = dim.textAlign === 'center' ? 'middle' : 'start';
+      const ff = hanwhaFontLoaded ? "HanwhaR, sans-serif" : "Poppins, Arial, sans-serif";
+      textEl = `<text x="${dim.textX?.toFixed(1)}" y="${dim.textY?.toFixed(1)}"
+        font-family="${ff}" font-weight="${fontWeight(S.lang)}"
+        font-size="${dim.fontSize?.toFixed(1)}" fill="${S.textColor}"
+        text-anchor="${anchor}">${escXML(company)}</text>`;
+    }
+    // 역순 (③②①)
+    const ringEls = [...rings].reverse().join('\n');
+    svgOut = `<svg xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 ${(dim.totalW || 300).toFixed(0)} ${dim.totalH.toFixed(0)}"
+      width="${(dim.totalW || 300).toFixed(0)}" height="${dim.totalH.toFixed(0)}">
+      ${ringEls}${textEl}
+    </svg>`;
+  }
+
+  const blob = new Blob([svgOut], { type: 'image/svg+xml;charset=utf-8' });
+  const layoutLabel = { vertical:'상하', horizontal:'좌우', symbol:'심볼' }[S.layout];
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${company}_CI_${layoutLabel}.svg`;
+  a.click();
+}
+
+function escXML(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 전체 조합 ─────────────────────────────────────────────
+const ALL_LAYOUTS   = ['vertical','horizontal','symbol'];
+const ALL_TC_COLORS = ['original','white','black'];
+const ALL_TXT_CLRS  = ['#000000','#ffffff'];
+
+function allCombos() {
+  const out = [];
+  for (const layout of ALL_LAYOUTS) {
+    for (const tc of ALL_TC_COLORS) {
+      if (layout === 'symbol') {
+        out.push({ layout, tcColor: tc, textColor: null, bgColor: tc === 'white' ? '#1a1a1a' : null });
+        break;
+      }
+      for (const txt of ALL_TXT_CLRS) {
+        const bg = txt === '#ffffff' ? '#1a1a1a' : null;
+        out.push({ layout, tcColor: tc, textColor: txt, bgColor: bg });
+      }
+    }
+  }
+  return out;
+}
+
+async function downloadAllZip() {
+  const company = document.getElementById('companyInput').value.trim() || 'Hanwha';
+  const zip = new JSZip();
+  for (const c of allCombos()) {
+    const canvas = document.createElement('canvas');
+    const symImg = await getSymbolImg(c.tcColor);
+    await renderCI(canvas, {
+      companyName: company, lang: S.lang, layout: c.layout,
+      tcColor: c.tcColor, textColor: c.textColor || '#000000',
+      bgColor: c.bgColor, baseScale: S.res, symImg,
+    });
+    const layoutLabel = { vertical:'상하', horizontal:'좌우', symbol:'심볼' }[c.layout];
+    const tcLabel = { original:'Orange', white:'White', black:'Black' }[c.tcColor];
+    const txtLabel = c.textColor ? (c.textColor === '#000000' ? '_TextBlack' : '_TextWhite') : '';
+    const bgLabel = c.bgColor ? (c.bgColor === '#ffffff' ? '_WhiteBG' : '_DarkBG') : '_Trans';
+    const fname = `${company}_${layoutLabel}_TC${tcLabel}${txtLabel}${bgLabel}.png`;
+    const blob = await new Promise(r => canvas.toBlob(r));
+    zip.file(fname, blob);
+  }
+  const content = await zip.generateAsync({ type:'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(content);
+  a.download = `${company}_CI_전체조합.zip`;
+  a.click();
+}
+
+async function renderAllThumbs() {
+  const company = document.getElementById('companyInput').value.trim() || 'Hanwha';
+  const container = document.getElementById('allCombos');
+  container.innerHTML = '';
+
+  for (const c of allCombos()) {
+    const canvas = document.createElement('canvas');
+    const symImg = await getSymbolImg(c.tcColor);
+    await renderCI(canvas, {
+      companyName: company, lang: S.lang, layout: c.layout,
+      tcColor: c.tcColor, textColor: c.textColor || '#000000',
+      bgColor: c.bgColor, baseScale: 0.7, symImg,
+    });
+
+    const card = document.createElement('div');
+    card.className = 'combo-card';
+    const thumb = document.createElement('div');
+    thumb.className = 'combo-thumb';
+    if (!c.bgColor) thumb.style.background = 'repeating-conic-gradient(#bbb 0% 25%,#e8e8e8 0% 50%) 0 0/16px 16px';
+    else thumb.style.background = c.bgColor;
+    thumb.appendChild(canvas);
+    card.appendChild(thumb);
+    const info = document.createElement('div');
+    info.className = 'combo-info';
+    const layoutLabel = { vertical:'상하', horizontal:'좌우', symbol:'심볼' }[c.layout];
+    const tcLabel = { original:'Orange', white:'White', black:'Black' }[c.tcColor];
+    const txtLabel = c.textColor ? (c.textColor === '#000000' ? 'Black글자' : 'White글자') : '';
+    info.textContent = `${layoutLabel} · TC${tcLabel}${txtLabel ? ' · ' + txtLabel : ''}`;
+    card.appendChild(info);
+    card.addEventListener('click', () => applyCombo(c));
+    container.appendChild(card);
+  }
+}
+
+function applyCombo(c) {
+  S.layout = c.layout;
+  S.tcColor = c.tcColor;
+  if (c.textColor) S.textColor = c.textColor;
+
+  // 버튼 동기화
+  document.querySelectorAll('[onclick*="setState(\'layout\'"]').forEach(b =>
+    b.classList.toggle('on', b.getAttribute('onclick').includes(`'${c.layout}'`)));
+  document.querySelectorAll('#tcColorBtns .color-set-btn').forEach(b =>
+    b.classList.toggle('on', b.getAttribute('onclick').includes(`'${c.tcColor}'`)));
+  if (c.textColor) document.querySelectorAll('#textColorBtns .btn-seg').forEach(b => {
+    const v = b.getAttribute('onclick').includes('#000000') ? '#000000' : '#ffffff';
+    b.classList.toggle('on', v === c.textColor);
+  });
+
+  const bgs = document.querySelectorAll('.bg-btn');
+  const wrap = document.getElementById('previewWrap');
+  if (!c.bgColor) {
+    wrap.className = 'preview-canvas-wrap bg-trans';
+    bgs.forEach((b,i) => b.classList.toggle('on', i===2));
+  } else if (c.bgColor === '#ffffff') {
+    wrap.className = 'preview-canvas-wrap bg-white';
+    bgs.forEach((b,i) => b.classList.toggle('on', i===0));
+  } else {
+    wrap.className = 'preview-canvas-wrap bg-dark';
+    bgs.forEach((b,i) => b.classList.toggle('on', i===1));
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  scheduleRender();
+}
+
+// ══ SVG 분리기 ════════════════════════════════════════════
+
+// 한화 트라이서클 fill 색상들
+const TC_FILLS = new Set(['#fbb584','#f89b6c','#f37321',
+                          'rgb(251, 181, 132)','rgb(248, 155, 108)','rgb(243, 115, 33)']);
+
+let splitResult = { symbol: null, text: null }; // { svg, bbox }
+let svgProportions = null; // 참조 SVG에서 추출한 심볼/텍스트 비율
+
+setupDropZone('splitDropZone', 'splitFileInput', loadSplitSVG);
+
+function loadSplitSVG(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('splitStatus').textContent = '분석 중…';
+    document.getElementById('splitStatus').className = 'split-status';
+    doSplitSVG(e.target.result, file.name);
+  };
+  reader.readAsText(file);
+}
+
+async function doSplitSVG(svgContent, fname) {
+  // 숨겨진 컨테이너에 SVG를 렌더링해서 getBBox() 사용
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-19999px;top:0;width:1920px;height:600px;visibility:hidden;overflow:hidden';
+  document.body.appendChild(holder);
+  holder.innerHTML = svgContent;
+  const svgEl = holder.querySelector('svg');
+  if (!svgEl) {
+    holder.remove();
+    document.getElementById('splitStatus').textContent = '❌ SVG 파싱 실패';
+    return;
+  }
+  svgEl.setAttribute('width', '1920');
+  svgEl.setAttribute('height', '600');
+
+  // getBBox가 동작하도록 레이아웃 flush
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  const allPaths = Array.from(svgEl.querySelectorAll('path, ellipse, circle, rect, polygon, polyline'));
+  const symEls = [], txtEls = [];
+
+  allPaths.forEach(el => {
+    // fill 추출: style 속성 우선, 그 다음 fill 속성
+    const style = el.getAttribute('style') || '';
+    const styleFill = (style.match(/fill\s*:\s*([^;]+)/) || [])[1]?.trim().toLowerCase() || '';
+    const attrFill = (el.getAttribute('fill') || '').toLowerCase();
+    const fill = styleFill || attrFill;
+    (TC_FILLS.has(fill) ? symEls : txtEls).push({ el, fill: fill || '#000000' });
+  });
+
+  function buildGroupSVG(elements) {
+    if (!elements.length) return null;
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    elements.forEach(({ el }) => {
+      try {
+        const b = el.getBBox();
+        if (b.width === 0 && b.height === 0) return;
+        minX = Math.min(minX, b.x);
+        minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.width);
+        maxY = Math.max(maxY, b.y + b.height);
+      } catch(_) {}
+    });
+    if (!isFinite(minX)) return null;
+    const pad = 4;
+    const vb = `${(minX-pad).toFixed(2)} ${(minY-pad).toFixed(2)} ${(maxX-minX+pad*2).toFixed(2)} ${(maxY-minY+pad*2).toFixed(2)}`;
+    const pathTags = elements.map(({ el, fill }) => {
+      const tag = el.tagName.toLowerCase();
+      const d = el.getAttribute('d');
+      return d
+        ? `<path d="${d}" style="fill:${fill}"/>`
+        : el.outerHTML;
+    }).join('\n');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}">\n${pathTags}\n</svg>`;
+    return { svg, bbox: { x: minX, y: minY, w: maxX-minX, h: maxY-minY } };
+  }
+
+  splitResult.symbol = buildGroupSVG(symEls);
+  splitResult.text   = buildGroupSVG(txtEls);
+  holder.remove();
+
+  // 참조 비율 저장 (CI 레이아웃 계산에 사용)
+  if (splitResult.symbol && splitResult.text) {
+    const sb = splitResult.symbol.bbox;
+    const tb = splitResult.text.bbox;
+    svgProportions = {
+      symW: sb.w, symH: sb.h,
+      txtH: tb.h,
+      hGap: Math.max(0, tb.x - (sb.x + sb.w)),
+    };
+  }
+
+  // 미리보기 업데이트
+  updateSplitPreview('symPreview', splitResult.symbol, ['symUseBtn','symDlBtn']);
+  updateSplitPreview('txtPreview', splitResult.text,   ['txtDlBtn']);
+
+  const symCount = symEls.length, txtCount = txtEls.length;
+  const status = document.getElementById('splitStatus');
+  status.textContent = `✓ 완료 — 심볼 ${symCount}개 path, 텍스트 ${txtCount}개 path 분리됨`;
+  status.className = 'split-status ok';
+
+  // 원본 드롭존 업데이트
+  document.getElementById('splitDropContent').innerHTML =
+    `<div class="drop-zone-loaded">✓ ${fname}</div>`;
+}
+
+function updateSplitPreview(previewId, result, btnIds) {
+  const el = document.getElementById(previewId);
+  if (!result) {
+    el.innerHTML = '<span class="split-preview-placeholder">path 없음</span>';
+    return;
+  }
+  // 배경색 힌트: 심볼은 어두운 배경이 잘 보임
+  el.innerHTML = result.svg;
+  btnIds.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.display = '';
+  });
+}
+
+function downloadSplitSVG(type) {
+  const r = splitResult[type];
+  if (!r) return;
+  const blob = new Blob([r.svg], { type: 'image/svg+xml;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = type === 'symbol' ? 'Hanwha_Tricircle.svg' : 'Hanwha_Logotype.svg';
+  a.click();
+}
+
+function useSymbolSVG() {
+  if (!splitResult.symbol) return;
+  // CI생성기의 SVG 필드에 주입
+  customSvgContent = splitResult.symbol.svg;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(customSvgContent, 'image/svg+xml');
+  const svgNode = doc.documentElement;
+  const vb = svgNode.getAttribute('viewBox');
+  if (vb) {
+    const p = vb.trim().split(/[\s,]+/);
+    svgNaturalW = parseFloat(p[2]) || 200;
+    svgNaturalH = parseFloat(p[3]) || 200;
+  }
+  document.getElementById('svgBadge').textContent = '로드됨 (분리기)';
+  document.getElementById('svgBadge').className = 'status-badge badge-ok';
+  document.getElementById('svgDropContent').innerHTML =
+    `<div class="drop-zone-loaded">✓ 트라이서클 SVG 적용됨 <button class="clear-btn" onclick="clearSvg(event)">✕</button></div>`;
+  // 아래 CI생성기로 스크롤
+  document.querySelector('.ci-layout').scrollIntoView({ behavior: 'smooth' });
+  scheduleRender();
+}
+
+// ── 초기화 ─────────────────────────────────────────────────
+document.fonts.ready.then(scheduleRender);
+scheduleRender();
+</script>
+</body>
+</html>
