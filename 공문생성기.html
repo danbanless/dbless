@@ -1633,14 +1633,25 @@ async function analyzeSplit(){
     rows.forEach(r=>r.sort((a,b)=>a.x-b.x));
 
     // 표 헤더 식별: '구분', '회사', '부서', '성명', '직급' 또는 일부 포함
-    const headerKW=['구분','회사','부서','성명','직급','소속','이름','번호'];
+    const headerKW=['구분','회사','부서','성명','직급','소속','이름','번호','No','회','사'];
     rows.forEach(r=>{
       const strs=r.map(it=>it.str);
       // 헤더 행: 짧은 텍스트들이 헤더 키워드와 일치
       const headerHits=strs.filter(s=>headerKW.includes(s)).length;
       if(headerHits>=3 && !headerCols){
+        // "회"+"사" 인접 컬럼을 "회사"로 병합
+        const merged=[];
+        const items=r.slice().sort((a,b)=>a.x-b.x);
+        for(let i=0;i<items.length;i++){
+          if(items[i].str==='회' && items[i+1] && items[i+1].str==='사' && items[i+1].x-items[i].x<20){
+            merged.push({x:items[i].x, label:'회사'});
+            i++; // '사' 스킵
+          } else {
+            merged.push({x:items[i].x, label:items[i].str});
+          }
+        }
         // 헤더 발견 - 컬럼 x좌표 저장
-        headerCols=r.map(it=>({x:it.x, label:it.str}));
+        headerCols=merged;
         console.log('헤더 행 발견:', strs.join(' | '), '@ x=', headerCols.map(c=>c.x.toFixed(0)).join(','));
         return; // 헤더 행은 스킵
       }
