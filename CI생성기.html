@@ -548,6 +548,7 @@ const FALLBACK_RINGS = [
 ];
 const FB_SYM_W = 260;
 const FB_SYM_H = 260;
+const NORM_SYM_H = 200; // SVG 업로드 시 심볼 정규화 높이 (baseScale=1 기준)
 
 function ringColors(tcColor) {
   if (tcColor === 'white') return ['#ffffff','#ffffff','#ffffff'];
@@ -646,9 +647,14 @@ async function renderCI(canvas, {
 }) {
   const ctx = canvas.getContext('2d');
 
-  // 심볼 크기 결정
-  const symW = symImg ? (svgNaturalW || 200) : FB_SYM_W;
-  const symH = symImg ? (svgNaturalH || 200) : FB_SYM_H;
+  // 심볼 크기 결정 (svgProportions 있을 때 NORM_SYM_H 기준 정규화)
+  let symH = symImg ? (svgNaturalH || 200) : FB_SYM_H;
+  let symW = symImg ? (svgNaturalW || 200) : FB_SYM_W;
+  if (symImg && svgProportions && symH > 0) {
+    const norm = NORM_SYM_H / symH;
+    symW = Math.round(symW * norm);
+    symH = NORM_SYM_H;
+  }
 
   const dim = calcLayout(layout, companyName, lang, baseScale, symW, symH);
 
@@ -746,7 +752,12 @@ function downloadSVG() {
   if (customSvgContent) {
     // SVG 기반
     const symSvg = colorizesvg(customSvgContent, S.tcColor);
-    const symW = svgNaturalW || 200, symH = svgNaturalH || 200;
+    let symH = svgNaturalH || 200, symW = svgNaturalW || 200;
+    if (svgProportions && symH > 0) {
+      const norm = NORM_SYM_H / symH;
+      symW = Math.round(symW * norm);
+      symH = NORM_SYM_H;
+    }
     const dim = calcLayout(S.layout, company, S.lang, 1, symW, symH);
 
     // 텍스트 요소 구성
