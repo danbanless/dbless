@@ -573,8 +573,10 @@ function drawFallbackTricircle(ctx, ox, oy, scale, colors) {
 }
 
 // ── CI 레이아웃 계산 ──────────────────────────────────────
-// CAP_HEIGHT_RATIO: 폰트 크기 대비 대문자 시각적 높이 비율 (HanwhaR/Poppins 기준)
-const CAP_HEIGHT_RATIO = 0.72;
+// 글자 cap-height = 심볼 높이가 되도록 fontSize 역산
+// Latin(HanwhaR/Poppins) cap-height ≈ fontSize × 0.72
+// Korean(Noto Sans KR) 전각 높이    ≈ fontSize × 0.88
+function capRatio(lang) { return lang === 'ko' ? 0.88 : 0.72; }
 
 function calcLayout(layout, companyName, lang, baseScale, symW, symH) {
   const sw = symW * baseScale;
@@ -587,56 +589,34 @@ function calcLayout(layout, companyName, lang, baseScale, symW, symH) {
     return { totalW: sw + pad*2, totalH: sh + pad*2, symX: pad, symY: pad, textX: null };
   }
 
-  if (svgProportions) {
-    // 참조 SVG에서 추출한 정확한 비율 사용
-    const propScale = sh / svgProportions.symH;
-    const refTxtH = svgProportions.txtH * propScale;          // 실제 텍스트 시각 높이 (px)
-    const fontSize = Math.round(refTxtH / CAP_HEIGHT_RATIO);  // 폰트 크기로 역산
-    const hGapPx   = svgProportions.hGap * propScale;         // 수평 간격
+  // 글자 시각 높이(cap-height) = 심볼 높이(sh)가 되도록 fontSize 설정
+  const fontSize = Math.round(sh / capRatio(lang));
 
-    if (layout === 'horizontal') {
-      // 텍스트 수직 중앙 = 심볼 수직 중앙 (참조 SVG 기준)
-      const symCenterY = pV + sh / 2;
-      const textY = symCenterY + refTxtH * 0.5; // baseline = center + cap_height/2
-      return {
-        totalW: pH + sw + hGapPx + 9999, // 나중에 보정
-        totalH: sh + pV * 2,
-        symX: pH, symY: pV,
-        textX: pH + sw + hGapPx,
-        textY, fontSize, textAlign: 'left', pH, hGapPx,
-      };
-    }
-    // vertical: 심볼 아래에 텍스트 배치, 간격은 심볼 높이의 8%
-    const vGap = sh * 0.08;
-    const textY = pV + sh + vGap + fontSize * 0.85;
+  if (layout === 'horizontal') {
+    // 수평 간격: svgProportions 있으면 참조값, 없으면 심볼 너비의 10%
+    const hGapPx = svgProportions
+      ? svgProportions.hGap * (sh / svgProportions.symH)
+      : sw * 0.10;
+    // 텍스트 수직: 심볼 상단~하단과 정렬 (alphabetic baseline = symY + sh)
+    const textY = pV + sh;
     return {
-      totalW: sw + pH * 2,
-      totalH: pV + sh + vGap + fontSize * 1.1 + pV,
+      totalW: pH + sw + hGapPx + 9999, // renderCI에서 실측 너비로 보정
+      totalH: sh + pV * 2,
       symX: pH, symY: pV,
-      textX: (sw + pH * 2) / 2,
-      textY, fontSize, textAlign: 'center',
+      textX: pH + sw + hGapPx,
+      textY, fontSize, textAlign: 'left', pH, hGapPx,
     };
   }
 
-  // ── 폴백 (참조 SVG 없을 때) ──
-  if (layout === 'vertical') {
-    const gap = 18 * baseScale;
-    const fs = Math.round(52 * baseScale);
-    return {
-      totalW: sw + pH*2, totalH: sh + gap + fs * 1.3 + pV*2,
-      symX: pH, symY: pV,
-      textX: (sw + pH*2) / 2, textY: pV + sh + gap + fs * 0.85,
-      fontSize: fs, textAlign: 'center',
-    };
-  }
-  // horizontal 폴백
-  const gap = 24 * baseScale;
-  const fs = Math.round(60 * baseScale);
+  // vertical
+  const vGap = sh * 0.08;
   return {
-    totalW: sw + gap + 9999, totalH: sh + pV*2,
+    totalW: sw + pH * 2,
+    totalH: pV + sh + vGap + fontSize * 1.1 + pV,
     symX: pH, symY: pV,
-    textX: pH + sw + gap, textY: pV + sh/2 + fs * 0.38,
-    fontSize: fs, textAlign: 'left', pH, hGapPx: gap,
+    textX: (sw + pH * 2) / 2,
+    textY: pV + sh + vGap + fontSize * 0.88,
+    fontSize, textAlign: 'center',
   };
 }
 
