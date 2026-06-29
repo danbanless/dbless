@@ -646,9 +646,12 @@ async function renderCI(canvas, {
 }) {
   const ctx = canvas.getContext('2d');
 
-  // 심볼 크기 결정
-  const symW = symImg ? (svgNaturalW || 200) : FB_SYM_W;
-  const symH = symImg ? (svgNaturalH || 200) : FB_SYM_H;
+  // 심볼 크기 결정 — SVG는 항상 260px 기준으로 정규화 (aspect ratio 유지)
+  const NORM_SYM_H = 260;
+  const symH = NORM_SYM_H;
+  const symW = symImg
+    ? Math.round(NORM_SYM_H * (svgNaturalW || NORM_SYM_H) / (svgNaturalH || NORM_SYM_H))
+    : FB_SYM_W;
 
   const dim = calcLayout(layout, companyName, lang, baseScale, symW, symH);
 
@@ -746,7 +749,9 @@ function downloadSVG() {
   if (customSvgContent) {
     // SVG 기반
     const symSvg = colorizesvg(customSvgContent, S.tcColor);
-    const symW = svgNaturalW || 200, symH = svgNaturalH || 200;
+    const _NORM = 260;
+    const symH = _NORM;
+    const symW = Math.round(_NORM * (svgNaturalW || _NORM) / (svgNaturalH || _NORM));
     const dim = calcLayout(S.layout, company, S.lang, 1, symW, symH);
 
     // 텍스트 요소 구성
