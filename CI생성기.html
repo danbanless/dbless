@@ -577,7 +577,8 @@ function drawFallbackTricircle(ctx, ox, oy, scale, colors) {
 // CAP_HEIGHT_RATIO: 폰트 크기 대비 대문자 시각적 높이 비율 (HanwhaR/Poppins 기준)
 const CAP_HEIGHT_RATIO = 0.72;
 
-function calcLayout(layout, companyName, lang, baseScale, symW, symH) {
+// hasSvg: SVG 업로드 상태 (비율 참조 없을 때도 스펙 비율 적용 여부)
+function calcLayout(layout, companyName, lang, baseScale, symW, symH, hasSvg = false) {
   const sw = symW * baseScale;
   const sh = symH * baseScale;
   const pH = 20 * baseScale;
@@ -591,23 +592,22 @@ function calcLayout(layout, companyName, lang, baseScale, symW, symH) {
   if (svgProportions) {
     // 참조 SVG에서 추출한 정확한 비율 사용
     const propScale = sh / svgProportions.symH;
-    const refTxtH = svgProportions.txtH * propScale;          // 실제 텍스트 시각 높이 (px)
-    const fontSize = Math.round(refTxtH / CAP_HEIGHT_RATIO);  // 폰트 크기로 역산
-    const hGapPx   = svgProportions.hGap * propScale;         // 수평 간격
+    const refTxtH = svgProportions.txtH * propScale;
+    const fontSize = Math.round(refTxtH / CAP_HEIGHT_RATIO);
+    const hGapPx   = svgProportions.hGap * propScale;
 
     if (layout === 'horizontal') {
-      // 텍스트 수직 중앙 = 심볼 수직 중앙 (참조 SVG 기준)
       const symCenterY = pV + sh / 2;
-      const textY = symCenterY + refTxtH * 0.5; // baseline = center + cap_height/2
+      const textY = symCenterY + refTxtH * 0.5;
       return {
-        totalW: pH + sw + hGapPx + 9999, // 나중에 보정
+        totalW: pH + sw + hGapPx + 9999,
         totalH: sh + pV * 2,
         symX: pH, symY: pV,
         textX: pH + sw + hGapPx,
         textY, fontSize, textAlign: 'left', pH, hGapPx,
       };
     }
-    // vertical: 심볼 아래에 텍스트 배치, 간격은 심볼 높이의 8%
+    // vertical
     const vGap = sh * 0.08;
     const textY = pV + sh + vGap + fontSize * 0.85;
     return {
@@ -619,25 +619,34 @@ function calcLayout(layout, companyName, lang, baseScale, symW, symH) {
     };
   }
 
-  // ── 폴백 (참조 SVG 없을 때) ──
+  // ── 폴백 ──
+  // SVG 업로드 상태면 Hanwha CI 스펙 비율(txtH/symH≈0.44, hGap/symW≈0.177) 사용
   if (layout === 'vertical') {
-    const gap = 18 * baseScale;
-    const fs = Math.round(52 * baseScale);
+    const vGap = hasSvg ? sh * 0.08 : 18 * baseScale;
+    const fs   = hasSvg ? Math.round(sh * 0.44 / CAP_HEIGHT_RATIO)
+                        : Math.round(52 * baseScale);
     return {
-      totalW: sw + pH*2, totalH: sh + gap + fs * 1.3 + pV*2,
+      totalW: sw + pH*2,
+      totalH: pV + sh + vGap + fs * 1.1 + pV,
       symX: pH, symY: pV,
-      textX: (sw + pH*2) / 2, textY: pV + sh + gap + fs * 0.85,
+      textX: (sw + pH*2) / 2,
+      textY: pV + sh + vGap + fs * 0.85,
       fontSize: fs, textAlign: 'center',
     };
   }
-  // horizontal 폴백
-  const gap = 24 * baseScale;
-  const fs = Math.round(60 * baseScale);
+  // horizontal
+  const hGapPx = hasSvg ? sw * 0.177 : 24 * baseScale;
+  const fs     = hasSvg ? Math.round(sh * 0.44 / CAP_HEIGHT_RATIO)
+                        : Math.round(60 * baseScale);
+  const symCenterY = pV + sh / 2;
+  const textY = hasSvg ? symCenterY + (sh * 0.44) * 0.5
+                       : symCenterY + fs * 0.38;
   return {
-    totalW: sw + gap + 9999, totalH: sh + pV*2,
+    totalW: pH + sw + hGapPx + 9999,
+    totalH: sh + pV * 2,
     symX: pH, symY: pV,
-    textX: pH + sw + gap, textY: pV + sh/2 + fs * 0.38,
-    fontSize: fs, textAlign: 'left', pH, hGapPx: gap,
+    textX: pH + sw + hGapPx,
+    textY, fontSize: fs, textAlign: 'left', pH, hGapPx,
   };
 }
 
@@ -647,16 +656,16 @@ async function renderCI(canvas, {
 }) {
   const ctx = canvas.getContext('2d');
 
-  // 심볼 크기 결정 (svgProportions 있을 때 NORM_SYM_H 기준 정규화)
+  // 심볼 크기 결정 (SVG 업로드 시 NORM_SYM_H 기준 정규화)
   let symH = symImg ? (svgNaturalH || 200) : FB_SYM_H;
   let symW = symImg ? (svgNaturalW || 200) : FB_SYM_W;
-  if (symImg && svgProportions && symH > 0) {
+  if (symImg && symH > 0) {
     const norm = NORM_SYM_H / symH;
     symW = Math.round(symW * norm);
     symH = NORM_SYM_H;
   }
 
-  const dim = calcLayout(layout, companyName, lang, baseScale, symW, symH);
+  const dim = calcLayout(layout, companyName, lang, baseScale, symW, symH, !!symImg);
 
   // horizontal: 텍스트 너비 보정
   if (layout === 'horizontal') {
@@ -753,12 +762,12 @@ function downloadSVG() {
     // SVG 기반
     const symSvg = colorizesvg(customSvgContent, S.tcColor);
     let symH = svgNaturalH || 200, symW = svgNaturalW || 200;
-    if (svgProportions && symH > 0) {
+    if (symH > 0) {
       const norm = NORM_SYM_H / symH;
       symW = Math.round(symW * norm);
       symH = NORM_SYM_H;
     }
-    const dim = calcLayout(S.layout, company, S.lang, 1, symW, symH);
+    const dim = calcLayout(S.layout, company, S.lang, 1, symW, symH, true);
 
     // 텍스트 요소 구성
     let textEl = '';
