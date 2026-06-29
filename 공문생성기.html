@@ -1826,7 +1826,7 @@ async function generateSplitZIP(){
       const rowsHtml = coRoster.map((r,idx)=>{
         return '<tr>'+splitCols.map(h=>{
           let v;
-          if(h==='구분'||h==='번호'||h==='No') v = r.num||idx+1;
+          if(h==='구분'||h==='번호'||h==='No') v = idx+1;
           else if(h==='회사'||h==='소속') v = r.co;
           else if(h==='부서') v = r.dep;
           else if(h==='성명'||h==='이름') v = r.nm;
