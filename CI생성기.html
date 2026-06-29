@@ -296,8 +296,8 @@
       <div class="opt-section">
         <span class="opt-label">조합 형식</span>
         <div class="btn-group">
-          <button class="btn-seg on" onclick="setState('layout','vertical',this)">상하 조합</button>
-          <button class="btn-seg" onclick="setState('layout','horizontal',this)">좌우 조합</button>
+          <button class="btn-seg" onclick="setState('layout','vertical',this)" style="display:none">상하 조합</button>
+          <button class="btn-seg on" onclick="setState('layout','horizontal',this)">좌우 조합</button>
           <button class="btn-seg" onclick="setState('layout','symbol',this)">심볼만</button>
         </div>
       </div>
@@ -371,7 +371,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ── 전역 상태 ────────────────────────────────────────────
-const S = { lang: 'en', layout: 'vertical', tcColor: 'original', textColor: '#000000', res: 4 };
+const S = { lang: 'en', layout: 'horizontal', tcColor: 'original', textColor: '#000000', res: 4 };
 
 let customSvgContent = null;  // 사용자 업로드 SVG 원본
 let svgNaturalW = 0, svgNaturalH = 0;  // SVG 기준 크기
@@ -816,7 +816,7 @@ function escXML(s) {
 }
 
 // ── 전체 조합 ─────────────────────────────────────────────
-const ALL_LAYOUTS   = ['vertical','horizontal','symbol'];
+const ALL_LAYOUTS   = ['horizontal','symbol'];
 const ALL_TC_COLORS = ['original','white','black'];
 const ALL_TXT_CLRS  = ['#000000','#ffffff'];
 
