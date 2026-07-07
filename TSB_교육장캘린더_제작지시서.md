@@ -125,7 +125,7 @@ TSB_교육장캘린더\
 
 ### 3-3. 기존 코드 재사용 지침
 
-`C:\Users\hanwha\Desktop\Claude_프로그래밍\TSB_DBLess\TSBWidget\` 에서 **복사해서 시작**할 것 (참조 원본은 수정 금지):
+`C:\Users\hanwha\Desktop\Claude_프로그래밍\TSB_DBLess\TSBWidget\` 에서 **복사해서 시작**할 것 (참조 원본은 수정 금지). 다른 PC에서 작업 시 이 경로가 없다면 `https://github.com/danbanless/TSB` 저장소를 clone해서 대신 사용:
 
 | 원본 파일 | 재사용 방법 |
 |---|---|
