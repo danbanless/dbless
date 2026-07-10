@@ -2024,9 +2024,9 @@ function renderSecHTML(sec, idx){
     if(b.type==='table'){
       const val = b.val.split('\n').filter(l=>l.trim());
       if(val.length<=1){
-        return `<tr><td style="width:80px">${esc(b.key)}</td><td class="tl">• ${esc(b.val)}</td></tr>`;
+        return `<tr><td style="width:80px;text-align:center;">${esc(b.key)}</td><td class="tl">• ${esc(b.val)}</td></tr>`;
       } else {
-        return `<tr><td style="width:80px">${esc(b.key)}</td><td class="tl">${val.map(v=>`• ${esc(v)}`).join('<br>')}</td></tr>`;
+        return `<tr><td style="width:80px;text-align:center;vertical-align:top;padding-top:6px;">${esc(b.key)}</td><td class="tl">${val.map(v=>`• ${esc(v)}`).join('<br>')}</td></tr>`;
       }
     }
     return null;
@@ -2038,7 +2038,7 @@ function renderSecHTML(sec, idx){
   let html = `<div class="dsec"><div class="dstitle">${idx+1}. ${esc(sec.title)}</div>`;
 
   if(tableBlocks.length){
-    html += `<table class="dt"><tbody>${rows.join('')}</tbody></table>`;
+    html += `<table class="dt"><thead><tr><th style="width:80px;">구분</th><th>내용</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
   }
   nonTableBlocks.forEach(b=>{
     if(b.type==='bullet') html+=`<div class="bullet">• ${esc(b.val)}</div>`;
