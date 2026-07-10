@@ -139,20 +139,20 @@ body{font-family:var(--ui);background:var(--bg);color:var(--tx);min-height:100vh
 
 /* 공문 미리보기 */
 .dp{background:#fff;border:1px solid var(--bdr);border-radius:4px;padding:30px 40px;font-family:var(--doc);font-size:14pt;line-height:1.85;color:#000;max-width:760px;margin:0 auto 12px auto;box-shadow:0 2px 10px rgba(0,0,0,.08);}
-.do{text-align:center;font-size:18pt;font-weight:bold;letter-spacing:.3em;margin-bottom:4px;}
-.ds{text-align:center;font-size:11pt;color:#555;margin-bottom:16px;}
-.dm table{border:none;width:100%;font-size:14pt;margin-bottom:12px;}
+.do{text-align:center;font-size:18pt;font-weight:bold;font-family:'HY견명조','HYGungSo','HY궁서','바탕',serif;letter-spacing:.3em;margin-bottom:4px;}
+.ds{text-align:center;font-size:11pt;color:#000;margin-bottom:16px;}
+.dm table{border:none;width:100%;font-size:13pt;margin-bottom:12px;}
 .dm td{border:none;padding:1px 4px;vertical-align:top;}
 .dm td:first-child{white-space:nowrap;color:#444;width:60px;}
 .db{font-size:14pt;margin-bottom:12px;line-height:1.9;}
 .dsec{margin-bottom:10px;margin-top:14px;}
-.dstitle{font-weight:bold;margin-bottom:5px;font-size:14pt;}
+.dstitle{font-weight:bold;margin-bottom:5px;font-size:13pt;}
 .dt{width:100%;border-collapse:collapse;font-size:13pt;margin-bottom:9px;}
-.dt th{background:#f0f0f0;border:1px solid #999;padding:4px 6px;text-align:center;font-weight:bold;}
-.dt td{border:1px solid #999;padding:4px 6px;text-align:center;vertical-align:middle;}
+.dt th{background:#D9E2F3;border:1px solid #808080;padding:4px 6px;text-align:center;font-weight:bold;}
+.dt td{border:1px solid #808080;padding:4px 6px;text-align:center;vertical-align:middle;}
 .tl{text-align:left!important;}
-.df{margin-top:16px;text-align:right;font-size:14pt;font-weight:bold;}
-.dr{margin-top:7px;font-size:12pt;color:#333;border-top:1px solid #ccc;padding-top:6px;}
+.df{margin-top:16px;text-align:right;font-size:16pt;font-weight:bold;font-family:'HY견명조','HYGungSo','HY궁서','바탕',serif;}
+.dr{margin-top:7px;font-size:10pt;color:#333;border-top:1px solid #ccc;padding-top:6px;}
 .dat{font-weight:bold;font-size:14pt;margin-bottom:7px;}
 .bullet{font-size:14pt;line-height:1.9;padding-left:1.2em;}
 .dash{font-size:14pt;line-height:1.9;padding-left:2.4em;}
@@ -1334,7 +1334,7 @@ function renderBlock(secId,b){
   </div>`;
 }
 
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function addSection(){
   S.sections.push(mkSec('새 섹션',[mkBlk('bullet','')]));
@@ -1455,7 +1455,7 @@ async function handleExtFiles(files){
         bytes: ab,
         position: 'after_timetable',  // 기본: 시간표 뒤
       });
-    } catch(e){ console.error(e); }
+    } catch(e){ console.error(e); alert(`${file.name} 처리 중 오류가 발생했습니다: ${e.message}`); }
   }
   renderExtList();
 }
@@ -1803,8 +1803,8 @@ async function generateSplitZIP(){
       .wrap{padding:0;}
       .at{font-weight:bold;font-size:14pt;margin-bottom:10px;}
       table{width:100%;border-collapse:collapse;font-size:13pt;}
-      th{background:#f0f0f0;border:1px solid #999;padding:5px 7px;text-align:center;font-weight:bold;}
-      td{border:1px solid #999;padding:5px 7px;text-align:center;}
+      th{background:#D9E2F3;border:1px solid #808080;padding:5px 7px;text-align:center;font-weight:bold;}
+      td{border:1px solid #808080;padding:5px 7px;text-align:center;}
       .tl{text-align:left;}
     `;
 
@@ -2024,9 +2024,9 @@ function renderSecHTML(sec, idx){
     if(b.type==='table'){
       const val = b.val.split('\n').filter(l=>l.trim());
       if(val.length<=1){
-        return `<tr><td style="width:80px">${b.key}</td><td class="tl">• ${b.val}</td></tr>`;
+        return `<tr><td style="width:80px">${esc(b.key)}</td><td class="tl">• ${esc(b.val)}</td></tr>`;
       } else {
-        return `<tr><td style="width:80px">${b.key}</td><td class="tl">${val.map(v=>`• ${v}`).join('<br>')}</td></tr>`;
+        return `<tr><td style="width:80px">${esc(b.key)}</td><td class="tl">${val.map(v=>`• ${esc(v)}`).join('<br>')}</td></tr>`;
       }
     }
     return null;
@@ -2035,15 +2035,15 @@ function renderSecHTML(sec, idx){
   const nonTableBlocks = sec.blocks.filter(b=>b.type!=='table');
   const tableBlocks = sec.blocks.filter(b=>b.type==='table');
 
-  let html = `<div class="dsec"><div class="dstitle">${idx+1}. ${sec.title}</div>`;
+  let html = `<div class="dsec"><div class="dstitle">${idx+1}. ${esc(sec.title)}</div>`;
 
   if(tableBlocks.length){
     html += `<table class="dt"><tbody>${rows.join('')}</tbody></table>`;
   }
   nonTableBlocks.forEach(b=>{
-    if(b.type==='bullet') html+=`<div class="bullet">• ${b.val}</div>`;
-    else if(b.type==='dash') html+=`<div class="dash">– ${b.val}</div>`;
-    else html+=`<div style="line-height:1.9;">${b.val}</div>`;
+    if(b.type==='bullet') html+=`<div class="bullet">• ${esc(b.val)}</div>`;
+    else if(b.type==='dash') html+=`<div class="dash">– ${esc(b.val)}</div>`;
+    else html+=`<div style="line-height:1.9;">${esc(b.val)}</div>`;
   });
   html+='</div>';
   return html;
@@ -2058,8 +2058,8 @@ function buildDoc(co,d){
   const docTitle=d.title||tmpl.autoTitle(d);
   const intro=d.intro||tmpl.autoIntro(d);
   const targetStr=d.target
-    ?`${d.target} <strong>${totalN}명</strong>`
-    :`${active.join(', ')} 임직원 중 희망자 <strong>${totalN}명</strong>`;
+    ?`${esc(d.target)} <strong>${totalN}명</strong>`
+    :`${active.map(esc).join(', ')} 임직원 중 희망자 <strong>${totalN}명</strong>`;
   const cols=S.columns;
   // 명단: 컬럼 공통 스타일 계산 (generateZIP에서도 동일 사용)
   function rosterColWidths(cols){
@@ -2071,13 +2071,13 @@ function buildDoc(co,d){
   }
   function buildRosterDp(roster, cols){
     const cw = rosterColWidths(cols);
-    const thead=`<thead><tr>${cols.map((c,ci)=>`<th style="${cw[ci]}">${c.name}</th>`).join('')}</tr></thead>`;
+    const thead=`<thead><tr>${cols.map((c,ci)=>`<th style="${cw[ci]}">${esc(c.name)}</th>`).join('')}</tr></thead>`;
     const tableOpen=`<table class="dt" style="table-layout:fixed;width:100%;">`;
     const rows = roster.length
       ? roster.map((r,i)=>'<tr>'+cols.map(c=>{
           let v; if(c.role==='number') v=i+1; else v=r._all?(r._all[c.name]||''):'';
           const isLeft=(c.role==='data'&&c.name.indexOf('부서')>=0);
-          return `<td${isLeft?' class="tl"':''}>${v}</td>`;
+          return `<td${isLeft?' class="tl"':''}>${esc(v)}</td>`;
         }).join('')+'</tr>').join('')
       : `<tr><td colspan="${cols.length}" style="text-align:center;color:#aaa;">명단 없음</td></tr>`;
     return `<div class="dp" data-page-type="roster"><div class="dat">(첨부) 2. 입과자 명단</div>${tableOpen}${thead}<tbody>${rows}</tbody></table></div>`;
@@ -2094,25 +2094,25 @@ function buildDoc(co,d){
 
   return `
 <div class="dp" data-page-type="body">
-  <div class="do">${d.orgName.split("").join(" ")}</div>
+  <div class="do">${esc(d.orgName).split("").join(" ")}</div>
   <div class="ds">(직 인 생 략)</div>
   <div class="dm"><table>
-    <tr><td>${d.orgPrefix}</td><td>제 ${d.num}호</td><td style="text-align:right">${d.date}</td></tr>
-    <tr><td>수신</td><td colspan="2">${d.to}</td></tr>
-    <tr><td>참조</td><td colspan="2">${d.ref}</td></tr>
-    <tr><td>제목</td><td colspan="2"><strong>${docTitle}</strong></td></tr>
+    <tr><td>${esc(d.orgPrefix)}</td><td>제 ${esc(d.num)}호</td><td style="text-align:right">${esc(d.date)}</td></tr>
+    <tr><td>수신</td><td colspan="2">${esc(d.to)}</td></tr>
+    <tr><td>참조</td><td colspan="2">${esc(d.ref)}</td></tr>
+    <tr><td>제목</td><td colspan="2"><strong>${esc(docTitle)}</strong></td></tr>
   </table></div>
-  <div class="db">${intro.replace(/\n/g,'<br>')}</div>
+  <div class="db">${esc(intro).replace(/\n/g,'<br>')}</div>
   ${sectionsHTML}
   ${(d.fee&&tmpl.showFee)?`
   <div class="dsec">
-    <div class="dstitle">${S.sections.length+1}. 교육비: ${d.fee}만원/1인${feeDetail}</div>
+    <div class="dstitle">${S.sections.length+1}. 교육비: ${esc(d.fee)}만원/1인${feeDetail}</div>
     ${tmpl.feeNote?`<div class="bullet">${tmpl.feeNote}</div>`:''}
-    ${(tmpl.showAcct&&d.acct)?`<div class="bullet">• 예금주명: ㈜한화인재경영원</div><div class="bullet">• 계좌번호: ${d.bank} ${d.acct}</div>`:''}
+    ${(tmpl.showAcct&&d.acct)?`<div class="bullet">• 예금주명: ㈜한화인재경영원</div><div class="bullet">• 계좌번호: ${esc(d.bank)} ${esc(d.acct)}</div>`:''}
   </div>`:''}
-  <div style="font-size:12.5px;margin-top:8px;">(첨부) ${d.attach}  끝.</div>
-  <div class="df">${d.orgName}</div>
-  <div class="dr">[수신처] ${active.join(', ')}</div>
+  <div style="font-size:12.5px;margin-top:8px;">(첨부) ${esc(d.attach)}  끝.</div>
+  <div class="df">${esc(d.orgName)}</div>
+  <div class="dr">[수신처] ${active.map(esc).join(', ')}</div>
 </div>
 <div class="dp" data-page-type="timetable">
   <div class="dat">(첨부) 1. 과정 시간표</div>
@@ -2129,7 +2129,7 @@ function previewDoc(){
   if(!S.curCo||!active.includes(S.curCo))S.curCo=active[0];
   document.getElementById('cNav').innerHTML=active.map(c=>{
     const n=S.roster.filter(r=>r.co===c).length;
-    return `<span class="nc ${c===S.curCo?'on':''}" data-sel-co="${c}">${c} <small>${n}명</small></span>`;
+    return `<span class="nc ${c===S.curCo?'on':''}" data-sel-co="${esc(c)}">${esc(c)} <small>${n}명</small></span>`;
   }).join('');
   document.getElementById('docArea').innerHTML=buildDoc(S.curCo,D());
   document.getElementById('prMeta').textContent=`${S.curCo} · ${active.length}개사 · 총 ${S.roster.filter(r=>!S.excluded.has(r.co)).length}명`;
