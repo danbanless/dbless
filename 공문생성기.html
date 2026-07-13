@@ -1436,7 +1436,7 @@ async function renderPDF(data){
   ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
   await page.render({canvasContext:ctx,viewport:vp,intent:'print'}).promise;
   await new Promise(r=>setTimeout(r,100));
-  S.ttDataURL=canvas.toDataURL('image/png');
+  // PDF 모드: 실제 출력엔 ttPdfBytes 원본을 직접 사용 → ttDataURL 저장 안 함
   document.getElementById('ttImg').style.display='none';
 }
 
@@ -2086,9 +2086,11 @@ function buildDoc(co,d){
   const feeDetail=(d.fee&&coRoster.length)
     ?` (${d.fee}만원 × ${coRoster.length}명 = ${(parseInt(d.fee)*coRoster.length).toLocaleString()}원)`:'';
   const schedStr=d.st?`${d.st} ~ ${d.en}${d.hrs?' ('+d.hrs+'Hrs)':''}` :'';
-  const ttSection=S.ttDataURL
-    ?`<img src="${S.ttDataURL}" style="max-width:100%;border:1px solid #ccc;" alt="시간표">`
-    :getTTHtml();
+  const ttSection=S.ttPdfBytes
+    ?`<div style="border:1px dashed #999;padding:16px;text-align:center;color:#666;font-size:12pt;background:#f9f9f9;">📄 시간표 PDF 첨부됨<br><small style="font-size:10pt;color:#aaa;">(미리보기 미지원 — 출력 시 원본 PDF 그대로 삽입)</small></div>`
+    :S.ttDataURL
+      ?`<img src="${S.ttDataURL}" style="max-width:100%;border:1px solid #ccc;" alt="시간표">`
+      :getTTHtml();
 
   // 섹션 HTML
   const sectionsHTML = S.sections.map((sec,i) => renderSecHTML(sec,i)).join('');
