@@ -129,7 +129,7 @@ body{font-family:var(--ui);background:var(--bg);color:var(--tx);min-height:100vh
 .pr-header h2{font-size:13px;font-weight:600;color:var(--acc);margin-right:auto;}
 .pr-header .pr-btns{display:flex;gap:8px;align-items:center;}
 .pr-header .btn{padding:6px 14px;font-size:12px;white-space:nowrap;}
-.pr-body{flex:1;overflow-y:auto;padding:14px 18px;}
+.pr-body{flex:1;overflow-y:scroll;min-height:0;padding:14px 18px;}
 .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
 .ph h2{font-size:14px;font-weight:600;color:var(--acc);}
 .cnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
@@ -1249,11 +1249,26 @@ function initTabs(){
   });
   document.addEventListener('change', function(e){
     const t = e.target;
-    if(t.dataset.secTitle) { updateSecTitle(+t.dataset.secTitle, t.value); return; }
-    if(t.dataset.blkVal) { const [sid,bid]=t.dataset.blkVal.split(','); updateBlock(+sid,+bid,'val',t.value); return; }
-    if(t.dataset.blkKey) { const [sid,bid]=t.dataset.blkKey.split(','); updateBlock(+sid,+bid,'key',t.value); return; }
-    if(t.dataset.colName!==undefined) { updateColName(+t.dataset.colName, t.value); return; }
-    if(t.dataset.extPos!==undefined) { updateExtPos(t.dataset.extPos, t.value); return; }
+    let dirty = false;
+    if(t.dataset.secTitle) { updateSecTitle(+t.dataset.secTitle, t.value); dirty=true; }
+    else if(t.dataset.blkVal) { const [sid,bid]=t.dataset.blkVal.split(','); updateBlock(+sid,+bid,'val',t.value); dirty=true; }
+    else if(t.dataset.blkKey) { const [sid,bid]=t.dataset.blkKey.split(','); updateBlock(+sid,+bid,'key',t.value); dirty=true; }
+    else if(t.dataset.colName!==undefined) { updateColName(+t.dataset.colName, t.value); }
+    else if(t.dataset.extPos!==undefined) { updateExtPos(t.dataset.extPos, t.value); }
+    if(dirty && S.roster.length) previewDoc();
+  });
+
+  // 기본정보·섹션 블록 입력 실시간 반영 (debounce 300ms)
+  let _previewTimer=null;
+  const LEFT_IDS=new Set(['orgName','orgPrefix','num','date','to','ref','title','intro','fee','target','bank','acct','hrs','st','en','attach']);
+  document.querySelector('.pl').addEventListener('input', function(e){
+    const t=e.target;
+    if(!S.roster.length) return;
+    const isLeftField = t.id && LEFT_IDS.has(t.id);
+    const isBlock = t.dataset.blkVal || t.dataset.blkKey || t.dataset.secTitle;
+    if(!isLeftField && !isBlock) return;
+    clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(previewDoc, 300);
   });
 }
 
