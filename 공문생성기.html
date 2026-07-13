@@ -1266,7 +1266,9 @@ function initTabs(){
     if(!S.roster.length) return;
     const isLeftField = t.id && LEFT_IDS.has(t.id);
     const isBlock = t.dataset.blkVal || t.dataset.blkKey || t.dataset.secTitle;
-    if(!isLeftField && !isBlock) return;
+    const isTT = t.classList.contains('tt-time') || t.classList.contains('tt-col-val');
+    if(!isLeftField && !isBlock && !isTT) return;
+    if(isTT) saveTTRows();
     clearTimeout(_previewTimer);
     _previewTimer = setTimeout(previewDoc, 300);
   });
