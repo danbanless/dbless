@@ -1430,7 +1430,8 @@ async function renderPDF(data){
   const page=await pdf.getPage(1);
   const vp=page.getViewport({scale:2.0});
   const canvas=document.getElementById('pdfCanvas');
-  canvas.width=vp.width;canvas.height=vp.height;canvas.style.display='block';
+  // 한글 폰트 CMap 미지원으로 캔버스 미리보기 깨짐 → 숨기고 PNG 변환만 수행
+  canvas.width=vp.width;canvas.height=vp.height;canvas.style.display='none';
   const ctx=canvas.getContext('2d');
   ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
   await page.render({canvasContext:ctx,viewport:vp,intent:'print'}).promise;
@@ -2140,20 +2141,20 @@ function selCo(c){S.curCo=c;previewDoc();}
 const DOC_STYLE=`
 body{margin:0;padding:0;background:#fff;font-family:'Batang','BatangChe','바탕',serif;font-size:14pt;color:#000;width:680px;}
 .dp{padding:0;background:#fff;page-break-after:always;}
-.do{text-align:center;font-size:18pt;font-weight:bold;letter-spacing:.3em;margin-bottom:4px;}
-.ds{text-align:center;font-size:11pt;color:#555;margin-bottom:16px;}
-.dm table{border:none;width:100%;font-size:14pt;margin-bottom:12px;}
+.do{text-align:center;font-size:18pt;font-weight:bold;font-family:'HY견명조','HYGungSo','HY궁서','바탕',serif;letter-spacing:.3em;margin-bottom:4px;}
+.ds{text-align:center;font-size:11pt;color:#000;margin-bottom:16px;}
+.dm table{border:none;width:100%;font-size:13pt;margin-bottom:12px;}
 .dm td{border:none;padding:1px 4px;vertical-align:top;}
 .dm td:first-child{white-space:nowrap;color:#444;width:60px;}
 .db{font-size:14pt;margin-bottom:12px;line-height:1.9;}
 .dsec{margin-bottom:10px;margin-top:14px;}
-.dstitle{font-weight:bold;margin-bottom:5px;font-size:14pt;}
+.dstitle{font-weight:bold;margin-bottom:5px;font-size:13pt;}
 .dt{width:100%;border-collapse:collapse;font-size:13pt;margin-bottom:9px;}
-.dt th{background:#f0f0f0;border:1px solid #999;padding:4px 6px;text-align:center;font-weight:bold;}
-.dt td{border:1px solid #999;padding:4px 6px;text-align:center;vertical-align:middle;}
+.dt th{background:#D9E2F3;border:1px solid #808080;padding:4px 6px;text-align:center;font-weight:bold;}
+.dt td{border:1px solid #808080;padding:4px 6px;text-align:center;vertical-align:middle;}
 .tl{text-align:left!important;}
-.df{margin-top:16px;text-align:right;font-size:14pt;font-weight:bold;}
-.dr{margin-top:7px;font-size:12pt;color:#333;border-top:1px solid #ccc;padding-top:6px;}
+.df{margin-top:16px;text-align:right;font-size:16pt;font-weight:bold;font-family:'HY견명조','HYGungSo','HY궁서','바탕',serif;}
+.dr{margin-top:7px;font-size:10pt;color:#333;border-top:1px solid #ccc;padding-top:6px;}
 .dat{font-weight:bold;font-size:14pt;margin-bottom:7px;}
 .bullet{font-size:14pt;line-height:1.9;padding-left:1.2em;}
 .dash{font-size:14pt;line-height:1.9;padding-left:2.4em;}
