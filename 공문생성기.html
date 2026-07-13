@@ -652,17 +652,17 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 <div class="layout">
 <div class="pl">
   <div class="tabs">
-    <button class="tab-btn on" data-tab="t-type">유형</button>
+    <button class="tab-btn on" data-tab="t-roster">명단</button>
+    <button class="tab-btn" data-tab="t-type">유형</button>
     <button class="tab-btn" data-tab="t-info">기본정보</button>
     <button class="tab-btn" data-tab="t-sections">내용</button>
-    <button class="tab-btn" data-tab="t-roster">명단</button>
     <button class="tab-btn" data-tab="t-tt">시간표</button>
     <button class="tab-btn" data-tab="t-attach">첨부</button>
     <button class="tab-btn" data-tab="t-split">공문분리</button>
   </div>
   <div class="pl-body">
   <!-- 탭: 유형 -->
-  <div class="tp on" id="t-type">
+  <div class="tp" id="t-type">
     <div class="sec">공문 유형</div>
     <div class="tc-wrap" id="tcWrap"></div>
     <div class="fg">
@@ -721,7 +721,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   </div>
 
   <!-- 탭: 명단 -->
-  <div class="tp" id="t-roster">
+  <div class="tp on" id="t-roster">
     <div class="sec">컬럼 구성 <span class="badge">분리 기준</span></div>
     <div class="rh" style="margin-bottom:8px;">
       엑셀에서 붙여넣을 명단의 <b>컬럼 순서·이름</b>을 설정하세요.<br>
