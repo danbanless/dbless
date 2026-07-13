@@ -19,9 +19,9 @@
   --doc:'Batang','BatangChe','바탕',serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--ui);background:var(--bg);color:var(--tx);min-height:100vh;display:flex;flex-direction:column;}
+body{font-family:var(--ui);background:var(--bg);color:var(--tx);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
-.layout{display:grid;grid-template-columns:1fr 1fr;flex:1;height:calc(100vh - 156px);}
+.layout{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;}
 
 /* 좌측 */
 .pl{background:var(--sur);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;}
@@ -1029,7 +1029,7 @@ function defaultSections(d){
     mkSec('교육비', [
       mkBlk('text','OO만원/1인'),
       mkBlk('bullet','예금주명: ㈜한화인재경영원'),
-      mkBlk('bullet','계좌번호: 우리은행 1005-001-380282'),
+      mkBlk('bullet','계좌번호: OO은행 0000-000-000000'),
     ]),
     mkSec('기타사항', [
       mkBlk('bullet','문의처: 홍길동 과장(010-0000-0000)'),
@@ -1329,7 +1329,7 @@ function renderBlock(secId,b){
       </div>
       <div class="block-inputs">
         <div class="tbl-row">
-          <input class="bi key" value="${esc(b.key)}" placeholder="구분명" data-blk-key="${secId},${b.id}">
+          <textarea class="bi key" rows="2" placeholder="구분명" data-blk-key="${secId},${b.id}">${esc(b.key)}</textarea>
           <textarea class="bi" rows="2" style="flex:1;" placeholder="내용" data-blk-val="${secId},${b.id}">${esc(b.val)}</textarea>
         </div>
       </div>
