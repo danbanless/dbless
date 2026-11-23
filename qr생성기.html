@@ -91,8 +91,12 @@
     #qrWrap {
       background: #fff; border-radius: 12px; padding: 12px;
       box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; align-items: center; justify-content: center;
-      min-width: 200px; min-height: 200px;
+      min-width: 200px; min-height: 200px; max-width: 100%; box-sizing: border-box;
     }
+    #qrContainer { min-width: 0; max-width: 100%; }
+    /* 미리보기만 패널에 맞춰 축소, 저장 파일은 설정 크기 유지 */
+    #qrContainer canvas, #qrContainer svg { display: block; max-width: 100%; height: auto; }
+    .preview-panel { min-width: 0; }
     #qrCanvas { display: block; }
 
     .dl-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -168,9 +172,36 @@
     <div class="qr-layout">
       <!-- 옵션 -->
       <div>
-        <div class="opt-section">
+        <!-- 단일 생성 입력 -->
+        <div class="opt-section" id="singleFields">
           <span class="opt-label">내용</span>
           <textarea class="opt-input" id="qrText" rows="3" placeholder="URL 또는 텍스트를 입력하세요" oninput="debounceUpdate()">https://dbless.net</textarea>
+        </div>
+
+        <!-- Wi-Fi 입력 -->
+        <div class="wifi-wrap" id="wifiFields">
+          <div class="opt-section">
+            <span class="opt-label">보안 방식</span>
+            <div class="sec-row">
+              <button class="sec-btn on" onclick="setWifiSec('WPA',this)">WPA/WPA2</button>
+              <button class="sec-btn" onclick="setWifiSec('WEP',this)">WEP</button>
+              <button class="sec-btn" onclick="setWifiSec('nopass',this)">없음</button>
+            </div>
+          </div>
+          <div class="opt-section">
+            <span class="opt-label">네트워크 이름 (SSID)</span>
+            <input class="opt-input" id="wifiSsid" type="text" placeholder="MyWiFi" oninput="debounceUpdate()">
+          </div>
+          <div class="opt-section" id="wifiPwWrap">
+            <span class="opt-label">비밀번호</span>
+            <input class="opt-input" id="wifiPw" type="text" placeholder="비밀번호" oninput="debounceUpdate()">
+          </div>
+          <div class="opt-section">
+            <span class="opt-label">숨겨진 네트워크</span>
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+              <input type="checkbox" id="wifiHidden" onchange="debounceUpdate()"> 숨김 네트워크
+            </label>
+          </div>
         </div>
 
         <div class="opt-section">
@@ -256,45 +287,6 @@
     </div>
   </div>
 
-  <!-- ── Wi-Fi QR ── -->
-  <div class="wifi-wrap" id="wifiWrap">
-    <div class="qr-layout">
-      <div>
-        <div class="opt-section">
-          <span class="opt-label">보안 방식</span>
-          <div class="sec-row">
-            <button class="sec-btn on" onclick="setWifiSec('WPA',this)">WPA/WPA2</button>
-            <button class="sec-btn" onclick="setWifiSec('WEP',this)">WEP</button>
-            <button class="sec-btn" onclick="setWifiSec('nopass',this)">없음</button>
-          </div>
-        </div>
-        <div class="opt-section">
-          <span class="opt-label">네트워크 이름 (SSID)</span>
-          <input class="opt-input" id="wifiSsid" type="text" placeholder="MyWiFi" oninput="updateWifi()">
-        </div>
-        <div class="opt-section" id="wifiPwWrap">
-          <span class="opt-label">비밀번호</span>
-          <input class="opt-input" id="wifiPw" type="text" placeholder="비밀번호" oninput="updateWifi()">
-        </div>
-        <div class="opt-section">
-          <span class="opt-label">숨겨진 네트워크</span>
-          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
-            <input type="checkbox" id="wifiHidden" onchange="updateWifi()"> 숨김 네트워크
-          </label>
-        </div>
-      </div>
-      <div class="preview-panel">
-        <div id="qrWrap2"><div id="qrContainer2"></div></div>
-        <p class="status" id="statusTxt2"></p>
-        <div class="dl-btns">
-          <button class="dl-btn primary" onclick="download('png','wifi')">PNG</button>
-          <button class="dl-btn" onclick="download('svg','wifi')">SVG</button>
-          <button class="dl-btn" onclick="download('jpeg','wifi')">JPG</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── 일괄 생성 ── -->
   <div class="bulk-wrap" id="bulkWrap">
     <div class="opt-section">
@@ -320,7 +312,9 @@ let dotType   = 'square';
 let frameType = 'none';
 let wifiSec   = 'WPA';
 let logoDataUrl = null;
-let qrMain = null, qrWifi = null;
+let currentMode = 'single';
+let qrMain = null;
+let qrMainSize = 300;
 let bulkQRs = [];
 let debTimer = null;
 
@@ -344,11 +338,20 @@ function makeQR(data, containerId, size) {
 
 // ── 단일 QR 업데이트 ─────────────────────────────────
 function updateQR() {
-  const txt = document.getElementById('qrText').value.trim();
-  if (!txt) { document.getElementById('statusTxt').textContent = '내용을 입력하세요'; return; }
+  const isWifi = currentMode === 'wifi';
+  const data = isWifi ? buildWifiData() : document.getElementById('qrText').value.trim();
+  const status = document.getElementById('statusTxt');
+  if (!data) {
+    // 입력이 비면 다른 탭의 QR이 남아 잘못 저장되지 않도록 비운다
+    qrMain = null;
+    document.getElementById('qrContainer').innerHTML = '';
+    status.textContent = isWifi ? 'SSID를 입력하세요' : '내용을 입력하세요';
+    return;
+  }
   const size = parseInt(document.getElementById('sizeSlider').value);
-  qrMain = makeQR(txt, 'qrContainer', size);
-  document.getElementById('statusTxt').textContent = '';
+  qrMain = makeQR(data, 'qrContainer', size);
+  qrMainSize = size;
+  status.textContent = '';
   applyFrame();
 }
 
@@ -412,37 +415,139 @@ function setFrame(type, btn) {
 
 function applyFrame() {
   const wrap = document.getElementById('qrWrap');
+  const fg = document.getElementById('fgColor').value;
+  const existingLabel = wrap.querySelector('.frame-label');
   wrap.style.padding = '12px';
   wrap.style.background = '#fff';
+  wrap.style.borderRadius = '12px';
+  if (frameType !== 'scan' && existingLabel) existingLabel.remove();
   if (frameType === 'none') { wrap.style.border = 'none'; return; }
-  const txt = document.getElementById('frameText').value || '스캔해주세요';
+  wrap.style.background = document.getElementById('bgColor').value;
   if (frameType === 'scan') {
-    wrap.style.border = '3px solid ' + document.getElementById('fgColor').value;
-    wrap.style.borderRadius = '12px';
+    wrap.style.border = '3px solid ' + fg;
     wrap.style.padding = '12px 12px 32px';
     wrap.style.position = 'relative';
-    let label = wrap.querySelector('.frame-label');
+    let label = existingLabel;
     if (!label) { label = document.createElement('div'); label.className = 'frame-label'; wrap.appendChild(label); }
-    label.textContent = txt;
+    label.textContent = document.getElementById('frameText').value || '스캔해주세요';
     Object.assign(label.style, {
-      position:'absolute', bottom:'8px', left:'0', right:'0',
+      position:'absolute', bottom:'8px', left:'8px', right:'8px',
       textAlign:'center', fontSize:'13px', fontWeight:'700',
-      color: document.getElementById('fgColor').value,
-      fontFamily: 'var(--mono)', letterSpacing: '.06em'
+      color: fg, fontFamily: 'var(--mono)', letterSpacing: '.06em',
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
     });
   } else if (frameType === 'box') {
-    wrap.style.border = '2px solid ' + document.getElementById('fgColor').value;
+    wrap.style.border = '2px solid ' + fg;
     wrap.style.borderRadius = '4px';
-    const label = wrap.querySelector('.frame-label');
-    if (label) label.remove();
   }
 }
 
+// 저장 파일의 프레임 치수 (미리보기 비율을 QR 크기에 맞춰 환산)
+function getFrameLayout(size) {
+  const s = size / 300;
+  const isScan = frameType === 'scan';
+  const border = Math.max(1, Math.round((isScan ? 3 : 2) * s));
+  const pad = Math.round(12 * s);
+  const bottom = isScan ? Math.round(32 * s) : pad;
+  const text = isScan ? (document.getElementById('frameText').value || '스캔해주세요') : '';
+  const family = getComputedStyle(document.documentElement).getPropertyValue('--mono').trim() || 'monospace';
+  let fontSize = 13 * s;
+  if (text) {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `700 ${fontSize}px ${family}`;
+    const textWidth = ctx.measureText(text).width;
+    if (textWidth > size) fontSize *= size / textWidth;
+  }
+  return {
+    border, pad, bottom, text, family, fontSize,
+    radius: Math.round((isScan ? 12 : 4) * s),
+    w: size + 2 * (pad + border),
+    h: size + pad + bottom + 2 * border,
+    qrOffset: pad + border,
+    textY: size + pad + border + bottom / 2,
+  };
+}
+
+async function buildFramedRaster(ext, size) {
+  const f = getFrameLayout(size);
+  const fg = document.getElementById('fgColor').value;
+  const bg = document.getElementById('bgColor').value;
+  const qrBlob = await qrMain.getRawData('png');
+  const qrImage = await createImageBitmap(qrBlob);
+  const canvas = Object.assign(document.createElement('canvas'), { width: f.w, height: f.h });
+  const ctx = canvas.getContext('2d');
+  if (ext === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, f.w, f.h); }
+  ctx.beginPath();
+  ctx.roundRect(f.border / 2, f.border / 2, f.w - f.border, f.h - f.border, f.radius);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.lineWidth = f.border;
+  ctx.strokeStyle = fg;
+  ctx.stroke();
+  ctx.drawImage(qrImage, f.qrOffset, f.qrOffset, size, size);
+  qrImage.close();
+  if (f.text) {
+    ctx.fillStyle = fg;
+    ctx.font = `700 ${f.fontSize}px ${f.family}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(f.text, f.w / 2, f.textY);
+  }
+  return new Promise(resolve => canvas.toBlob(resolve, `image/${ext}`, 0.95));
+}
+
+async function buildFramedSvg(size) {
+  const f = getFrameLayout(size);
+  const fg = document.getElementById('fgColor').value;
+  const bg = document.getElementById('bgColor').value;
+  const qrBlob = await qrMain.getRawData('svg');
+  const inner = new DOMParser().parseFromString(await qrBlob.text(), 'image/svg+xml').documentElement;
+  if (!inner.getAttribute('viewBox')) inner.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  inner.setAttribute('x', f.qrOffset);
+  inner.setAttribute('y', f.qrOffset);
+  inner.setAttribute('width', size);
+  inner.setAttribute('height', size);
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const doc = document.implementation.createDocument(NS, 'svg', null);
+  const root = doc.documentElement;
+  root.setAttribute('width', f.w);
+  root.setAttribute('height', f.h);
+  root.setAttribute('viewBox', `0 0 ${f.w} ${f.h}`);
+  const rect = doc.createElementNS(NS, 'rect');
+  Object.entries({
+    x: f.border / 2, y: f.border / 2, width: f.w - f.border, height: f.h - f.border,
+    rx: f.radius, fill: bg, stroke: fg, 'stroke-width': f.border,
+  }).forEach(([k, v]) => rect.setAttribute(k, v));
+  root.appendChild(rect);
+  root.appendChild(doc.importNode(inner, true));
+  if (f.text) {
+    const label = doc.createElementNS(NS, 'text');
+    Object.entries({
+      x: f.w / 2, y: f.textY, fill: fg, 'font-size': f.fontSize, 'font-weight': 700,
+      'font-family': f.family, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+    }).forEach(([k, v]) => label.setAttribute(k, v));
+    label.textContent = f.text;
+    root.appendChild(label);
+  }
+  return new Blob([new XMLSerializer().serializeToString(doc)], { type: 'image/svg+xml' });
+}
+
+function buildFramedBlob(ext) {
+  return ext === 'svg' ? buildFramedSvg(qrMainSize) : buildFramedRaster(ext, qrMainSize);
+}
+
 // ── 다운로드 ──────────────────────────────────────────
-function download(ext, target) {
-  const q = target === 'wifi' ? qrWifi : qrMain;
-  if (!q) return;
-  q.download({ name: 'QR_DBLess', extension: ext });
+async function download(ext) {
+  if (!qrMain) return;
+  if (frameType === 'none') {
+    qrMain.download({ name: 'QR_DBLess', extension: ext });
+    return;
+  }
+  const blob = await buildFramedBlob(ext);
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), { href: url, download: `QR_DBLess.${ext}` }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ── Wi-Fi ─────────────────────────────────────────────
@@ -451,25 +556,20 @@ function setWifiSec(type, btn) {
   document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   document.getElementById('wifiPwWrap').style.display = type === 'nopass' ? 'none' : '';
-  updateWifi();
+  debounceUpdate();
 }
 
-function updateWifi() {
+// Wi-Fi QR 규격의 예약 문자(\ ; , : ")를 이스케이프
+function escapeWifiValue(value) {
+  return value.replace(/([\\;,:"])/g, '\\$1');
+}
+
+function buildWifiData() {
   const ssid = document.getElementById('wifiSsid').value;
   const pw   = document.getElementById('wifiPw')?.value || '';
   const hidden = document.getElementById('wifiHidden').checked ? 'true' : 'false';
-  if (!ssid) { document.getElementById('statusTxt2').textContent = 'SSID를 입력하세요'; return; }
-  const data = `WIFI:T:${wifiSec === 'nopass' ? 'nopass' : wifiSec};S:${ssid};${wifiSec !== 'nopass' ? 'P:' + pw + ';' : ''}H:${hidden};;`;
-  const size = 300;
-  qrWifi = new QRCodeStyling({
-    width: size, height: size, data,
-    dotsOptions: { type: 'square', color: '#111110' },
-    backgroundOptions: { color: '#ffffff' },
-    qrOptions: { errorCorrectionLevel: 'M' },
-  });
-  document.getElementById('qrContainer2').innerHTML = '';
-  qrWifi.append(document.getElementById('qrContainer2'));
-  document.getElementById('statusTxt2').textContent = '';
+  if (!ssid) return '';
+  return `WIFI:T:${wifiSec === 'nopass' ? 'nopass' : wifiSec};S:${escapeWifiValue(ssid)};${wifiSec !== 'nopass' ? 'P:' + escapeWifiValue(pw) + ';' : ''}H:${hidden};;`;
 }
 
 // ── 일괄 생성 ─────────────────────────────────────────
@@ -519,10 +619,12 @@ async function downloadBulkZip() {
 function setMode(mode, btn) {
   document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById('singleWrap').style.display = mode === 'single' ? '' : 'none';
-  document.getElementById('wifiWrap').classList.toggle('on', mode === 'wifi');
+  currentMode = mode;
+  document.getElementById('singleWrap').style.display = mode === 'bulk' ? 'none' : '';
+  document.getElementById('singleFields').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('wifiFields').classList.toggle('on', mode === 'wifi');
   document.getElementById('bulkWrap').classList.toggle('on', mode === 'bulk');
-  if (mode === 'wifi' && !qrWifi) updateWifi();
+  if (mode !== 'bulk') updateQR();
 }
 
 // ── 초기화 ────────────────────────────────────────────
