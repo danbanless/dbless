@@ -220,8 +220,8 @@
           <span class="opt-label">색상</span>
           <div class="color-row">
             <div class="color-item">
-              <label>전경색</label>
-              <input type="color" id="fgColor" value="#111110" oninput="debounceUpdate()">
+              <label>QR색</label>
+              <input type="color" id="fgColor" value="#111110" oninput="onQrColorInput()">
             </div>
             <div class="color-item">
               <label>배경색</label>
@@ -255,8 +255,22 @@
             <button class="frame-btn" onclick="setFrame('scan',this)">스캔 안내</button>
             <button class="frame-btn" onclick="setFrame('box',this)">박스형</button>
           </div>
-          <div id="frameTextWrap" style="display:none;margin-top:10px;">
-            <input class="opt-input" id="frameText" type="text" value="스캔해주세요" oninput="debounceUpdate()" placeholder="프레임 문구">
+          <div id="frameOptsWrap" style="display:none;margin-top:10px;">
+            <div id="frameTextWrap" style="margin-bottom:10px;">
+              <input class="opt-input" id="frameText" type="text" value="스캔해주세요" oninput="debounceUpdate()" placeholder="프레임 문구">
+            </div>
+            <!-- 테두리색·글자색: 직접 바꾸기 전까지는 QR색을 따라감 -->
+            <div class="color-row">
+              <div class="color-item">
+                <label>테두리색</label>
+                <input type="color" id="frameBorderColor" value="#111110" data-linked="true" oninput="onFrameColorInput(this)">
+              </div>
+              <div class="color-item" id="frameTextColorItem">
+                <label>글자색</label>
+                <input type="color" id="frameTextColor" value="#111110" data-linked="true" oninput="onFrameColorInput(this)">
+              </div>
+            </div>
+            <button type="button" onclick="resetFrameColors()" style="margin-top:8px;font-size:12px;padding:4px 10px;border:1px solid var(--gray-300);border-radius:6px;background:none;cursor:pointer;color:var(--gray-500);font-family:inherit;">QR색으로 맞추기</button>
           </div>
         </div>
 
@@ -409,13 +423,45 @@ function setFrame(type, btn) {
   frameType = type;
   document.querySelectorAll('.frame-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById('frameTextWrap').style.display = type === 'none' ? 'none' : '';
+  document.getElementById('frameOptsWrap').style.display = type === 'none' ? 'none' : '';
+  // 박스형은 문구가 없으므로 문구 입력과 글자색을 숨김
+  document.getElementById('frameTextWrap').style.display = type === 'scan' ? '' : 'none';
+  document.getElementById('frameTextColorItem').style.display = type === 'scan' ? '' : 'none';
   debounceUpdate();
+}
+
+// ── 색상 (QR색 / 테두리색 / 글자색) ──────────────────
+const FRAME_COLOR_IDS = ['frameBorderColor', 'frameTextColor'];
+
+function onQrColorInput() {
+  const qrColor = document.getElementById('fgColor').value;
+  FRAME_COLOR_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el.dataset.linked === 'true') el.value = qrColor;
+  });
+  debounceUpdate();
+}
+
+function onFrameColorInput(el) {
+  el.dataset.linked = 'false';
+  debounceUpdate();
+}
+
+function resetFrameColors() {
+  FRAME_COLOR_IDS.forEach(id => document.getElementById(id).dataset.linked = 'true');
+  onQrColorInput();
+}
+
+function getFrameColors() {
+  return {
+    border: document.getElementById('frameBorderColor').value,
+    text: document.getElementById('frameTextColor').value,
+  };
 }
 
 function applyFrame() {
   const wrap = document.getElementById('qrWrap');
-  const fg = document.getElementById('fgColor').value;
+  const { border: borderColor, text: textColor } = getFrameColors();
   const existingLabel = wrap.querySelector('.frame-label');
   wrap.style.padding = '12px';
   wrap.style.background = '#fff';
@@ -424,7 +470,7 @@ function applyFrame() {
   if (frameType === 'none') { wrap.style.border = 'none'; return; }
   wrap.style.background = document.getElementById('bgColor').value;
   if (frameType === 'scan') {
-    wrap.style.border = '3px solid ' + fg;
+    wrap.style.border = '3px solid ' + borderColor;
     wrap.style.padding = '12px 12px 32px';
     wrap.style.position = 'relative';
     let label = existingLabel;
@@ -433,11 +479,11 @@ function applyFrame() {
     Object.assign(label.style, {
       position:'absolute', bottom:'8px', left:'8px', right:'8px',
       textAlign:'center', fontSize:'13px', fontWeight:'700',
-      color: fg, fontFamily: 'var(--mono)', letterSpacing: '.06em',
+      color: textColor, fontFamily: 'var(--mono)', letterSpacing: '.06em',
       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
     });
   } else if (frameType === 'box') {
-    wrap.style.border = '2px solid ' + fg;
+    wrap.style.border = '2px solid ' + borderColor;
     wrap.style.borderRadius = '4px';
   }
 }
@@ -470,7 +516,7 @@ function getFrameLayout(size) {
 
 async function buildFramedRaster(ext, size) {
   const f = getFrameLayout(size);
-  const fg = document.getElementById('fgColor').value;
+  const { border: borderColor, text: textColor } = getFrameColors();
   const bg = document.getElementById('bgColor').value;
   const qrBlob = await qrMain.getRawData('png');
   const qrImage = await createImageBitmap(qrBlob);
@@ -482,12 +528,12 @@ async function buildFramedRaster(ext, size) {
   ctx.fillStyle = bg;
   ctx.fill();
   ctx.lineWidth = f.border;
-  ctx.strokeStyle = fg;
+  ctx.strokeStyle = borderColor;
   ctx.stroke();
   ctx.drawImage(qrImage, f.qrOffset, f.qrOffset, size, size);
   qrImage.close();
   if (f.text) {
-    ctx.fillStyle = fg;
+    ctx.fillStyle = textColor;
     ctx.font = `700 ${f.fontSize}px ${f.family}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -498,7 +544,7 @@ async function buildFramedRaster(ext, size) {
 
 async function buildFramedSvg(size) {
   const f = getFrameLayout(size);
-  const fg = document.getElementById('fgColor').value;
+  const { border: borderColor, text: textColor } = getFrameColors();
   const bg = document.getElementById('bgColor').value;
   const qrBlob = await qrMain.getRawData('svg');
   const inner = new DOMParser().parseFromString(await qrBlob.text(), 'image/svg+xml').documentElement;
@@ -517,14 +563,14 @@ async function buildFramedSvg(size) {
   const rect = doc.createElementNS(NS, 'rect');
   Object.entries({
     x: f.border / 2, y: f.border / 2, width: f.w - f.border, height: f.h - f.border,
-    rx: f.radius, fill: bg, stroke: fg, 'stroke-width': f.border,
+    rx: f.radius, fill: bg, stroke: borderColor, 'stroke-width': f.border,
   }).forEach(([k, v]) => rect.setAttribute(k, v));
   root.appendChild(rect);
   root.appendChild(doc.importNode(inner, true));
   if (f.text) {
     const label = doc.createElementNS(NS, 'text');
     Object.entries({
-      x: f.w / 2, y: f.textY, fill: fg, 'font-size': f.fontSize, 'font-weight': 700,
+      x: f.w / 2, y: f.textY, fill: textColor, 'font-size': f.fontSize, 'font-weight': 700,
       'font-family': f.family, 'text-anchor': 'middle', 'dominant-baseline': 'central',
     }).forEach(([k, v]) => label.setAttribute(k, v));
     label.textContent = f.text;
